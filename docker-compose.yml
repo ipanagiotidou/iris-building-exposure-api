@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgis/postgis:17-3.5
+    container_name: building_exposure_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: building_exposure
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      # 5433 on the host, 5432 inside the container
+      - "127.0.0.1:5433:5432"  # the container still listens on Postgres port 5432 internally, but your machine connects through 5433.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d building_exposure"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
+

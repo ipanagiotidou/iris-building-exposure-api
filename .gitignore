@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual env
+.venv/
+env/
+venv/
+
+# Jupyter / VSCode
+.ipynb_checkpoints/
+.vscode/
+
+# OS
+.DS_Store
+
+# Env variables
+.env
+
+# Data (important for you)
+data/
+*.gpkg
+*.geojson
+*.parquet
+
+# Logs
+*.log
+
+# Docker
+pgdata/
+
+# HTML
+*.html
