@@ -101,6 +101,10 @@ def fetch_osm_buildings_from_polygon(polygon: Polygon, tags: dict = {"building":
 
     # FLATTEN THE MULTI-INDEX TO NORMAL COLUMNS:
     # Now fields like element, id, or osmid may appear as normal columns.
+    # .reset_index() function:
+    # The reset_index() method allows you reset the index back to the default 0, 1, 2 etc indexes. 
+    # By default this method will keep the "old" idexes in a column named "index", 
+    # to avoid this, use the drop parameter.
     gdf = gdf.reset_index()
 
     # ENSURE CRS IS SET TO WGS84 (EPSG:4326):
@@ -109,6 +113,11 @@ def fetch_osm_buildings_from_polygon(polygon: Polygon, tags: dict = {"building":
 
     # Lastly exclude some features to make the AOI more challenging 
     gdf = filter_buildings_out(gdf).copy()
+
+
+    # reset index after filtering
+    gdf = gdf.reset_index(drop=True)
+
 
     return gdf
 

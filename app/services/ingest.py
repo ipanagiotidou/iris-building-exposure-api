@@ -20,8 +20,12 @@ from sqlalchemy.orm import Session
 from geoalchemy2.shape import from_shape
 
 from app.models.building import Building
-from app.models.source_building import OSMBuildingRaw
+from app.models.source_building import OSMBuildingRaw, BAGBuildingRaw
 
+from app.services.normalize import clean_value
+
+
+### --------- 1. OSM.   ------------------------------------------------------------------------------
 
 def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
     """
@@ -124,3 +128,44 @@ def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session) -> int:
     db.commit()
     return inserted 
 
+
+
+### --------- 2. BAG.   ------------------------------------------------------------------------------
+
+
+def ingest_raw_bag_buildings(raw_bag_gdf: GeoDataFrame, db: Session) -> int:
+    """
+    Insert the prepared raw OSM rows into the Database.
+    Return the number of inserted records.
+    """
+
+    inserted = 0 
+
+    # iterrows() iterate over the rows of a DataFrame as (index, Series) pairs and insert them into the database
+    # for larger datasets, it would be more efficient to use bulk insert methods, but not in the scope of this project.
+    for _, row in raw_bag_gdf.iterrows():  # index, row pairs 
+
+        # Convert geometry to WKB format for PostGIS \x01\x03\x00\... etc
+        # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
+
+
+        record = BAGBuildingRaw(
+            bag_id=str(row.get("bag_id")),
+
+            geom = from_shape(row.geometry, srid=4326), # this function converts a Shapely geometry to a WKBElement that can be stored in PostGIS. It also sets the SRID to 4326. 
+            
+            # value 0 is for buildings with unknown use. Don't touch here. Normalize in Canonical.
+            aantal_verblijfsobjecten = row.get("aantal_verblijfsobjecten"), 
+            bouwjaar=row.get("bouwjaar"),
+
+            # Important to call this function within the ingestion module. It turns NaN into [null] for PostGIS. 
+            gebruiksdoel=clean_value(row.get("gebruiksdoel")),
+            status=row.get("status"),
+
+        )
+
+        db.add(record)
+        inserted += 1
+        
+    db.commit()
+    return inserted 

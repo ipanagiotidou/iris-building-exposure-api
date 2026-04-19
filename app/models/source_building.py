@@ -10,6 +10,23 @@ from geoalchemy2 import Geometry
 from app.core.db import Base
 
 
+""" 
+GENERAL THINGS:
+    - Altogether: “geom is a mapped attribute, stored in DB as a geometry column”
+
+    - geom: Mapped[object] 
+            --> type hint for SQLAlchemy ORM (Python typing / ORM hint)
+            --> “This attribute is mapped to a database column”
+            --> this is a column-managed attribute, not just a normal Python attribute
+    
+    - geom = mapped_column(Geometry(...))
+            --> the actual database column definition
+            --> 
+
+"""
+
+### --------- OSM ------------------------------------------------------------------------------
+
 class OSMBuildingRaw(Base):
 
     """
@@ -39,18 +56,13 @@ class OSMBuildingRaw(Base):
     
     __tablename__ = "osm_buildings_raw"
 
+    # this id is NOT based on pandas index 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     # Raw Source Identity 
     # some OSM IDs are numeric, but some are alphanumeric (e.g. "way/12345", "relation/67890")
     osm_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     element: Mapped[str | None] = mapped_column(String(50), nullable=True)  # way, relation
-
-    # Raw Geometry 
-    # object cause geomety data can be in various formats (e.g., WKB, WKT, GeoJSON).
-    # I will try to ingest the geometry as WKB (Well-Known Binary) format.
-    # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
-    geom: Mapped[object] = mapped_column(Geometry("GEOMETRY", srid=4326), nullable=False) # multipolygon, polygon, linestring, point, etc.
 
     # selected raw OSM tags
     # I used building tag to fetch so it shouldn't be null.
@@ -75,11 +87,76 @@ class OSMBuildingRaw(Base):
     # Datetime when the record was ingested into the database.
     ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)       
     
+    # Raw Geometry 
+    # OBJECT: cause geomety data can be in various formats (e.g., Polygon, Multi-polygon, Point, WKB, WKT, GeoJSON).
+    # I will try to ingest the geometry as WKB (Well-Known Binary) format.
+    # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
+    geom: Mapped[object] = mapped_column(Geometry("GEOMETRY", srid=4326), nullable=False) # multipolygon, polygon, linestring, point, etc.
+
 
     def __repr__(self) -> str:
         return f"OSMBuildingRaw(id={self.id!r}, osm_id={self.osm_id!r})"
 
 
+
+
+### --------- BAG ------------------------------------------------------------------------------
+
+class BAGBuildingRaw(Base):
+    
+
+    """
+    the raw BAG building data table should be PERMISSIVE, not strict. 
+    We want to preserve all the raw data, even if some columns are missing or have inconsistent values. 
+    
+    So raw table columns should be:
+        - close to source naming
+        - mostly nullable
+        - lightly cleaned
+        - easy to inspect
+        Not:
+        - strict
+        - canonical
+        - heavily interpreted
+
+
+    """
+    
+    __tablename__ = "bag_buildings_raw"
+
+    # this id is NOT based on pandas index 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Raw Source Identity 
+    # some BAG IDs are numeric, but could be anything.
+    bag_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
+    # selected raw BAG columns
+    aantal_verblijfsobjecten: Mapped[str] = mapped_column(String(50), nullable=True)    # number_of_units: number of residential properties
+    bouwjaar: Mapped[str | None] = mapped_column(String(50), nullable=True)              # construction_year
+    gebruiksdoel: Mapped[str | None] = mapped_column(String(250), nullable=True)          # intented_use: e.g. retail function, residential function
+    status: Mapped[str | None] = mapped_column(String(250), nullable=True)     # status: e.g. demolished,  in use , renovation, not realized 
+
+
+    # Datetime when the record was ingested into the database.
+    ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)       
+    
+    # Raw Geometry 
+    # object cause geomety data can be in various formats (e.g., WKB, WKT, GeoJSON).
+    # I will try to ingest the geometry as WKB (Well-Known Binary) format in PostGIS.
+    # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
+    geom: Mapped[object] = mapped_column(Geometry("GEOMETRY", srid=4326), nullable=False) # multipolygon, polygon, linestring, point, etc.
+
+
+    def __repr__(self) -> str:
+        return f"BAGBuildingRaw(id={self.id!r}, osm_id={self.bag_id!r})"
+
+
+
+
+
+
+### --------- MICROSOFT ------------------------------------------------------------------------------
 
 class MicrosoftBuildingRaw(Base):
     

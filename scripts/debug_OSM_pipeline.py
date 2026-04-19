@@ -97,9 +97,6 @@ osm_gdf_buildings.head()
 # see the columns as rows and the first 3 records as columns, to get a better overview of the data and its structure.
 osm_gdf_buildings.head(3).T
 
-# %%
-# element and id columms should be present, and not as multi-index anymore.
-osm_gdf_buildings.columns.tolist()
 
 # %%
 # first record 
@@ -111,6 +108,11 @@ osm_gdf_buildings.geometry.iloc[0]
 
 
 ###### Section 1.1: Inspect the columns of the OSM gdf and check what is useful for the DB ######
+
+# %%
+# element and id columms should be present, and not as multi-index anymore.
+osm_gdf_buildings.columns.tolist()
+
 
 # %%
 # Any column with "building" in its name

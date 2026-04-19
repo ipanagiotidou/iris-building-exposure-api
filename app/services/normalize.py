@@ -28,6 +28,14 @@ REJECT_BUILDING_VALUES = {
 }
 
 
+# TODO ... 
+# SOS: AFTER MATCHING GEOMETRIES !!!! CAUSE OTHERWISE IT WILL BRING  GEOMETRY FROM OSM.
+REJECT_BAG_BUILDING_BASED_ON_STATUS = {
+    "...",
+    "... ",
+}
+
+
 # I could move this function to a utils file, but for now I will keep it here. 
 def utm_epsg_from_lonlat(lon: float, lat: float) -> int:
     zone = floor((lon + 180) / 6) + 1
@@ -42,14 +50,25 @@ def estimate_local_utm_epsg(gdf):
     return utm_epsg_from_lonlat(lon, lat)
 
 
+# BUG: 
+#   I was getting a lot of NaN values inside PostGIS (SHOULD BE [null]), 
+#   I noticed it within the 'gebruiksdoel' column 
+# SOLUTION: 
+#   Call this function within ingestion module. 
 def clean_value(value: Any) -> Any:
     """
-    Convert pandas NaN / empty strings to None.
+    Convert Pandas missing values (NaN)/ empty strings to Python None.
     """
     if value is None:
         return None
-    if pd.isna(value):
-        return None
+    
+    # try, except for lists, dicts
+    try:
+        if pd.isna(value):
+            return None
+    except TypeError:
+        pass
+
     if isinstance(value, str):
         value = value.strip()
         if value == "":
@@ -104,6 +123,12 @@ def parse_int_maybe(value: Any) -> int:
         return 0
 
 
+
+### --------- 1. OSM.   ------------------------------------------------------------------------------
+
+
+### --------- 1.1. OSM. - raw  ------------------------------------------------------------------------------
+
 def prepare_raw_osm_buildings_gdf(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """
     Prepare the fetched OSM GeoDataFrame for raw-table insertion.
@@ -149,9 +174,6 @@ def prepare_raw_osm_buildings_gdf(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoD
         "osm_id",       # this should be like this (normalized before as "osm_id") 
         "element",
 
-        # geometry
-        "geometry",
-
         # building tags
         "building",
         "building:use",
@@ -169,6 +191,10 @@ def prepare_raw_osm_buildings_gdf(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoD
 
         # full tags
         "tags_json"
+
+        # geometry 
+        "geometry",
+
         ]
 
 
@@ -191,8 +217,7 @@ def prepare_raw_osm_buildings_gdf(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoD
 
 
 
-
-
+### --------- 1.2 OSM. - normalized  ------------------------------------------------------------------------------
 
 
 def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -329,11 +354,6 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
         "source_dataset",
         "source_record_id",
 
-        # Geometry & geometry-derived
-        "geometry",
-        "centroid",
-        "footprint_area_m2",
-        "floorspace_m2",
 
         # Core attributes 
         "building_type",
@@ -355,6 +375,12 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
 
         # tags
         "tags_json",
+
+        # Geometry & geometry-derived
+        "footprint_area_m2",
+        "floorspace_m2",
+        "centroid",
+        "geometry",
 
         # Later pipeline fields
         "is_matched",
@@ -385,19 +411,84 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
 
 
 
+### --------- 2. BAG.   ------------------------------------------------------------------------------
+
+
+### --------- 2.1. BAG. - raw  ------------------------------------------------------------------------------
+
+
+def prepare_raw_bag_buildings_gdf(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Prepare the fetched BAG GeoDataFrame for raw-table insertion.
+    This is still source-like, not canonical.
+
+    In “raw" table it is expected to : 
+        - convert NaN → None 
+    Reason:
+        - When I have missing values in BAG → in Postgres should appear as  NULL, NOT  "NaN".
 
 
 
+    fetched BAG gdf
+    → prepare_raw_bag_gdf(...)
+    → ingest_raw_bag_gdf(...)
+    → bag_buildings_raw table
+    """
+
+    # By copying the gdf I avoid modifying it outside the function. 
+    # This way I keep the original gdf intact, the original columns, the CRS, etc. 
+    raw_bag_gdf = fetched_bag_gdf.copy()
+
+
+    # Normalize source id
+    # IMPORTANT NOTE: no casting here. I want to keep the original BAG ID format, which can anything.
+    # GENERAL NOTE: in the raw layer just store source data “as-is”.
+    if "identificatie" in raw_bag_gdf.columns:
+        raw_bag_gdf["bag_id"] = raw_bag_gdf["identificatie"]
+    else:
+        # the index is reset to a simple range (in fetching function) from 0 to len(raw_osm_gdf)-1, 
+        # so I can use it as bag_id, but I need to convert it to ... to match the BAGBuildingRaw model data type.
+        raw_bag_gdf["osm_id"] = raw_bag_gdf.index  # .astype(str)
+
+
+    # Normalize 
+    # missing values in BAG should appear as  NULL, NOT  "NaN", in Postgres.
+    raw_bag_gdf["gebruiksdoel"] = raw_bag_gdf["gebruiksdoel"].apply(clean_value)
+
+
+    # Keep only fields I want in raw storage
+    # 15 columns
+    raw_cols = [
+        # identity
+        "bag_id",       # this should be like this (normalized before as "osm_id") 
+
+        # building information
+        "aantal_verblijfsobjecten",
+        "bouwjaar",
+        "gebruiksdoel",
+        "status",
+
+        # geometry 
+        "geometry",
+
+        ]
+
+
+    # Common in ETL pipelines to ensure a CONSISTENT SCHEMA for the raw data, 
+    # even if some columns are missing in the source data ensure that the DataFrame has all the expected columns, 
+    # the code below: 
+    #   - creates a new column 
+    #   - pandas broadcasts None to all rows
+    #   - dtype becomes object # NOTE: NOT IDEAL FOR NUMERIC FIELDS, but for simplicity I will keep all fields as strings in the raw table, and only cast them to numeric in the normalization step.
+    for col in raw_cols:
+        if col not in raw_bag_gdf.columns:
+            raw_bag_gdf[col] = None
+
+    # keep only the columns I want in the raw table, and in the order I want.
+    prepared_raw_bag_gdf = raw_bag_gdf[raw_cols].copy()
+
+    return prepared_raw_bag_gdf
 
 
 
-
-
-
-
-
-
-
-    return canonical_osm_gdf  
-
-
+### --------- 2.2 BAG. - normalized  ------------------------------------------------------------------------------

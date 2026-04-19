@@ -10,6 +10,10 @@ from app.core.config import settings
 from app.schemas.bbox import BBox
 
 
+import logging
+
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
 
 BAG_EXCLUDE_IDS = ['0503100000004048', '0503100000005344', '0503100000012187', '0503100000017220', 
                         '0503100000017317', '0503100000017412', '0503100000017413', '0503100000017420', 
@@ -100,14 +104,44 @@ def fetch_bag_buildings_gdf(
             if link.get("rel") == "next" and link.get("href"):
                 next_url = link["href"]
                 break
-
+    
+    # if empty return an empty gdf
     if not all_features:
         return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
 
+    # Create the GeoDataFrame 
+    # ENSURE CRS IS SET TO WGS84 (EPSG:4326):
     gdf = gpd.GeoDataFrame.from_features(all_features, crs="EPSG:4326")
+
+    # VALIDITY CHECKS FOR GEOMETRIES:
+    logger.warning(f"Valid geometries before filtering: {gdf.geometry.is_valid.sum()}")
+    # is_valid returns a Boolean list with True and False values. Sum only takes into account the True values. 
+    logger.warning(f"Invalid geometries before filtering: {gdf.geometry.is_valid.count() - gdf.geometry.is_valid.sum()}")
+    
+    # TO DO...
+    # FILTER OUT INVALID GEOMETRIES:
+    # In this case, there are no invalid geometries, so this step is not necessary, but in general it is a good practice to filter out invalid geometries before ingesting into the database, to avoid issues with spatial queries and analyses later on. 
+    gdf = gdf[gdf.geometry.is_valid].copy()
+
+
+    # KEEP ONLY POLYGON-LIKE BUILDING GEOMETRIES:
+    # check the number of records and geometry types before and after filtering:
+    logger.warning(f"Number of records before filtering: {len(gdf)}")
+    logger.warning(f"Geometry types before filtering:\n{gdf.geometry.geom_type.value_counts(dropna=False)}")
+
+    # Keep only polygon-like building geometries
+    gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])].copy()
+
+    logger.warning(f"Number of records after filtering: {len(gdf)}")
+    logger.warning(f"Geometry types after filtering:\n{gdf.geometry.geom_type.value_counts(dropna=False)}")
+
 
     # Lastly exclude some features to make the AOI more challenging 
     gdf = filter_buildings_out(gdf).copy()
+
+    # reset index after filtering
+    gdf = gdf.reset_index(drop=True)
+
 
     return gdf
     
