@@ -19,6 +19,8 @@ from geopandas import GeoDataFrame
 from sqlalchemy.orm import Session
 from geoalchemy2.shape import from_shape
 
+from app.core.db import Base
+
 from app.models.building import Building
 from app.models.source_building import OSMBuildingRaw, BAGBuildingRaw
 
@@ -30,22 +32,44 @@ from app.services.normalize import clean_value
 def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
     """
     Insert the prepared raw OSM rows into the Database.
+    Skip rows that already exist based on (element, osm_id).
     Return the number of inserted records.
     """
 
     inserted = 0 
 
+    # GOAL: Build a fast lookup set of all existing unique (element, osm_id) pairs already in the database.
+    # FLOW: the db starts emtpy and I am building the set of keys as I go. 
+    # db.query builds an SQL query, equivalent to "SELECT element, osm_id FROM osm_buildings_raw;"
+    # OSMBuildingRaw.element, OSMBuildingRaw.osm_i  ... are COLUMN REFERENCES ! 
+    # similar to ... “Give me only these two columns from the table”
+    # .all() executes the query and returns all results. Returns list[tuple]
+    # the list turns into a set 
+    existing_keys = set(
+        db.query(OSMBuildingRaw.element, OSMBuildingRaw.osm_id).all()
+    )
+
+
     # iterrows() iterate over the rows of a DataFrame as (index, Series) pairs and insert them into the database
     # for larger datasets, it would be more efficient to use bulk insert methods, but not in the scope of this project.
     for _, row in raw_osm_gdf.iterrows():  # index, row pairs 
+        osm_id=str(row.get("osm_id")),
+        element=row.get("element"),
 
+        # Ensure uniqueness of building records
+        key = (element, osm_id)
+        if key in existing_keys:  # O(1) (constant time)
+            continue
+
+
+        # Note on the Geomtetry: 
         # Convert geometry to WKB format for PostGIS \x01\x03\x00\... etc
         # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
 
 
         record = OSMBuildingRaw(
-            osm_id=str(row.get("osm_id")),
-            element=row.get("element"),
+            osm_id=osm_id,
+            element=element,
 
             geom = from_shape(row.geometry, srid=4326), # this function converts a Shapely geometry to a WKBElement that can be stored in PostGIS. It also sets the SRID to 4326. 
             
@@ -66,6 +90,7 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
         )
 
         db.add(record)
+        existing_keys.add(key)
         inserted += 1
         
     db.commit()
@@ -75,14 +100,77 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
 
 
 
-def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session) -> int:
+
+### --------- 2. BAG.   ------------------------------------------------------------------------------
+
+
+def ingest_raw_bag_buildings(raw_bag_gdf: GeoDataFrame, db: Session) -> int:
+    """
+    Insert the prepared raw OSM rows into the Database.
+    Return the number of inserted records.
+    """
+
+    inserted = 0 
+
+    # Build the set of existing unique keys already in the DB
+    # bag_id  should change to the original  'identificatie'
+    existing_bag_ids = set(
+        bag_id for (bag_id,) in db.query(BAGBuildingRaw.bag_id).all()
+    )
+
+    # iterrows() iterate over the rows of a DataFrame as (index, Series) pairs and insert them into the database
+    # for larger datasets, it would be more efficient to use bulk insert methods, but not in the scope of this project.
+    for _, row in raw_bag_gdf.iterrows():  # index, row pairs 
+
+        bag_id=str(row.get("bag_id"))
+
+        # Ensure uniqueness of building records
+        if bag_id in existing_bag_ids:
+            continue
+
+
+
+        # Note on Geometry: 
+        # Convert geometry to WKB format for PostGIS \x01\x03\x00\... etc
+        # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
+
+
+        record = BAGBuildingRaw(
+            bag_id=bag_id,
+
+            geom = from_shape(row.geometry, srid=4326), # this function converts a Shapely geometry to a WKBElement that can be stored in PostGIS. It also sets the SRID to 4326. 
+            
+            # value 0 is for buildings with unknown use. Don't touch here. Normalize in Canonical.
+            aantal_verblijfsobjecten = row.get("aantal_verblijfsobjecten"), 
+            bouwjaar=row.get("bouwjaar"),
+
+            # Important to call this function within the ingestion module. It turns NaN into [null] for PostGIS. 
+            gebruiksdoel=clean_value(row.get("gebruiksdoel")),
+            status=row.get("status"),
+
+        )
+
+        db.add(record)
+        existing_bag_ids.add(bag_id)
+        inserted += 1
+        
+    db.commit()
+    return inserted 
+
+
+
+### --------- 3. GENERALIZED .   ------------------------------------------------------------------------------
+
+
+
+def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session, model_class: Base = Building) -> int:
     """
     Insert normalized building rows into buildings.
     """
     inserted = 0
 
     for _, row in canonical_gdf.iterrows():
-        building = Building(
+        building = model_class(
             source_dataset=row["source_dataset"],
             source_record_id=row["source_record_id"],
 
@@ -127,47 +215,3 @@ def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session) -> int:
 
     db.commit()
     return inserted 
-
-
-
-### --------- 2. BAG.   ------------------------------------------------------------------------------
-
-
-def ingest_raw_bag_buildings(raw_bag_gdf: GeoDataFrame, db: Session) -> int:
-    """
-    Insert the prepared raw OSM rows into the Database.
-    Return the number of inserted records.
-    """
-
-    inserted = 0 
-
-    # iterrows() iterate over the rows of a DataFrame as (index, Series) pairs and insert them into the database
-    # for larger datasets, it would be more efficient to use bulk insert methods, but not in the scope of this project.
-    for _, row in raw_bag_gdf.iterrows():  # index, row pairs 
-
-        # Convert geometry to WKB format for PostGIS \x01\x03\x00\... etc
-        # WKB is a compact binary representation of geometry that is more efficient for storage and querying in PostGIS compared to WKT (Well-Known Text) or GeoJSON.
-
-
-        record = BAGBuildingRaw(
-            bag_id=str(row.get("bag_id")),
-
-            geom = from_shape(row.geometry, srid=4326), # this function converts a Shapely geometry to a WKBElement that can be stored in PostGIS. It also sets the SRID to 4326. 
-            
-            # value 0 is for buildings with unknown use. Don't touch here. Normalize in Canonical.
-            aantal_verblijfsobjecten = row.get("aantal_verblijfsobjecten"), 
-            bouwjaar=row.get("bouwjaar"),
-
-            # Important to call this function within the ingestion module. It turns NaN into [null] for PostGIS. 
-            gebruiksdoel=clean_value(row.get("gebruiksdoel")),
-            status=row.get("status"),
-
-        )
-
-        db.add(record)
-        inserted += 1
-        
-    db.commit()
-    return inserted 
-
-

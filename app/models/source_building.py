@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, String, func
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from geoalchemy2 import Geometry
@@ -16,8 +17,8 @@ GENERAL THINGS:
 
     - geom: Mapped[object] 
             --> type hint for SQLAlchemy ORM (Python typing / ORM hint)
-            --> “This attribute is mapped to a database column”
-            --> this is a column-managed attribute, not just a normal Python attribute
+            --> “This attribute is mapped to a database COLUMN
+            --> this is a COLUMN-managed ATTRIBUTE, NOT JUST a normal Python attribute
     
     - geom = mapped_column(Geometry(...))
             --> the actual database column definition
@@ -55,6 +56,13 @@ class OSMBuildingRaw(Base):
     """
     
     __tablename__ = "osm_buildings_raw"
+
+    # What makes one raw OSM record unique
+    # OSM SCHEMA: Osm_id is unique only within object type. (relation, way, node)
+    __tableargs__ = (
+        UniqueConstraint("element", "osm_id", name= "uq_osm_raw_element_osm_id")
+    )
+
 
     # this id is NOT based on pandas index 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -124,12 +132,18 @@ class BAGBuildingRaw(Base):
     
     __tablename__ = "bag_buildings_raw"
 
+    __table_args__ = (
+        UniqueConstraint("bag_id", name="uq_bag_raw_bag_id"),
+    )
+
+
     # this id is NOT based on pandas index 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     # Raw Source Identity 
     # some BAG IDs are numeric, but could be anything.
-    bag_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    # this should change to identificatie
+    bag_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)  #  bag_id: identificatie
 
     # selected raw BAG columns
     aantal_verblijfsobjecten: Mapped[str] = mapped_column(String(50), nullable=True)    # number_of_units: number of residential properties

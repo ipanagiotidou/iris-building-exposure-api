@@ -25,7 +25,7 @@ from shapely.geometry import Polygon, box
 from app.core import db
 from app.core.db import SessionLocal
 
-from app.models.building import Building
+from app.models.building import BAGCanonicalBuilding
 
 from app.schemas.bbox import BBox
 
@@ -233,7 +233,7 @@ canonical_osm_gdf_buildings.head().T
 # %%
 db = SessionLocal()
 
-canonical_count = ingest_canonical_buildings(canonical_osm_gdf_buildings, db)
+canonical_count = ingest_canonical_buildings(canonical_osm_gdf_buildings, db, BAGCanonicalBuilding)
 print(f"Inserted canonical rows: {canonical_count}")
 
 db.close()
