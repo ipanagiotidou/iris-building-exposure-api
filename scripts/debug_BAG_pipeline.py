@@ -31,30 +31,30 @@ from app.schemas.bbox import BBox
 
 from app.services.bag_fetch import fetch_bag_buildings_gdf
 
-from app.services.normalize import prepare_raw_bag_buildings_gdf
-from app.services.ingest import ingest_raw_bag_buildings
+from app.services.normalize import prepare_raw_bag_buildings_gdf, normalize_bag_gdf_to_canonical
+from app.services.ingest import ingest_raw_bag_buildings, ingest_canonical_buildings
 
 
 
 ####### DEBUGGING THE BAG PIPELINE #######
 
-###### SECTION 1: Debug the Fetching BAG data function and inspect the gdf. ######
+###### SECTION 1: Debug the Fetching BAG data function and inspect the gdf_fetched. ######
 
 
 # %%
 # Downloads Delft automatically 
-gdf = fetch_bag_buildings_gdf(bbox= BBox(west= 4.357, south = 52.006, east=4.367, north=52.012))
-type(gdf) # geodataframe 
+gdf_fetched = fetch_bag_buildings_gdf(bbox= BBox(west= 4.357, south = 52.006, east=4.367, north=52.012))
+type(gdf_fetched) # geodataframe 
 
 
 # %%
 # check: range of index values, which should be a simple range from 0 to len(osm_gdf_buildings)-1 after resetting the index.
 # if it set correctly it should show the Range: RangeIndex(start=0, stop=1407, step=1)
-gdf.index   
+gdf_fetched.index   
 
 # %%
 # check: the fetching function checks that it is 4326 and not None
-gdf.crs
+gdf_fetched.crs
 
 # %%
 # Inspecting the fetched OSM data:
@@ -62,33 +62,33 @@ gdf.crs
 # - Check the columns and their types
 # - Check the geometry type and CRS  
 
-gdf.shape
+gdf_fetched.shape
 
 # %%
-len(gdf)
+len(gdf_fetched)
 
 # %%
-gdf.head()
+gdf_fetched.head()
 
 # %%
 # see the columns as rows and the first 3 records as columns, to get a better overview of the data and its structure.
-gdf.head(3).T
+gdf_fetched.head(3).T
 
 # %%
 # Doesn’t include counts of NaN.
-gdf.geometry.geom_type.value_counts()
+gdf_fetched.geometry.geom_type.value_counts()
 
 # %%
 # Includes NaN values, which means that some records do not have a 'type' field.
-gdf.geometry.geom_type.unique()
+gdf_fetched.geometry.geom_type.unique()
 
 # %%
 # first record 
-gdf.iloc[0]
+gdf_fetched.iloc[0]
 
 # %%
 # first geometry 
-gdf.geometry.iloc[0]
+gdf_fetched.geometry.iloc[0]
 
 
 
@@ -97,12 +97,12 @@ gdf.geometry.iloc[0]
 
 # %%
 # element and id columms should be present, and not as multi-index anymore.
-gdf.columns.tolist()
+gdf_fetched.columns.tolist()
 
 ###### Section 1.1.1:  INSPECT THE VALUES OF SPECIFIC COLUMNS (INCLUDING NaNs):  ######
 
 # %%
-gdf["gebruiksdoel"].head(10)
+gdf_fetched["gebruiksdoel"].head(10)
 
 # %%
 # I see NaNs in PostGIS from this column. WHEN missing in BAG → NULL in Postgres NOT  "NaN"
@@ -110,19 +110,19 @@ gdf["gebruiksdoel"].head(10)
 #       - dtype object
 #       - missing values as numpy.nan
 # So the column is not “all strings”; it is “mixed Python objects, mostly strings plus NaN”.
-gdf["gebruiksdoel"].dtype
+gdf_fetched["gebruiksdoel"].dtype
 
 # %%
 # 259 missing values 
-gdf["gebruiksdoel"].isna().sum()
+gdf_fetched["gebruiksdoel"].isna().sum()
 
 
 # %%
 for col in ['"verblijfsobject"', 'aantal_verblijfsobjecten', 'bouwjaar', 
             'gebruiksdoel', 'geconstateerd', 'identificatie', 'status']:
-    if col in gdf.columns:
+    if col in gdf_fetched.columns:
         print("\n", col)
-        print(gdf[col].value_counts(dropna=False).head(20))
+        print(gdf_fetched[col].value_counts(dropna=False).head(20))
 
 
 
@@ -131,20 +131,20 @@ for col in ['"verblijfsobject"', 'aantal_verblijfsobjecten', 'bouwjaar',
 #%%
 # Invalid geometries are already filtered out when fetched.
 # Check here that all unique values are True: If invalid geometries there should be False values in the unique values. 
-gdf.geometry.is_valid.unique()
+gdf_fetched.geometry.is_valid.unique()
 
 
 ###### Section 1.3:  Visualize the OSM building footprints or save an HTML file locally (same folder as the script) for broswer visualization ######
 
 
 # %%
-gdf.plot(figsize=(8, 8))
+gdf_fetched.plot(figsize=(8, 8))
 
 
 # HTML visualization
 # %%
 # the basemap underneath is OSM raster tiles, which is a nice way to check that the building footprints are in the right place
-m = gdf.explore(tiles="OpenStreetMap", 
+m = gdf_fetched.explore(tiles="OpenStreetMap", 
                           color="blue",
                           style_kwds={"fillOpacity": 0.2}, 
                           tooltip=['"verblijfsobject"', 'aantal_verblijfsobjecten', 'bouwjaar', 
@@ -157,7 +157,7 @@ m.save("bag_buildings.html")
 
 
 # %%
-gdf.to_file('bag_buildings.geojson', driver='GeoJSON')
+gdf_fetched.to_file('bag_buildings.geojson', driver='GeoJSON')
 # %%
 
 
@@ -180,7 +180,7 @@ gdf.to_file('bag_buildings.geojson', driver='GeoJSON')
 
 
 # %%
-prepared_raw_bag_gdf_buildings = prepare_raw_bag_buildings_gdf(gdf)
+prepared_raw_bag_gdf_buildings = prepare_raw_bag_buildings_gdf(gdf_fetched)
 
 # %%
 # If the column dtype is: StringDtype(na_value=nan) 
@@ -222,7 +222,7 @@ db.close()
 
 
 # %%
-canonical_osm_gdf_buildings = normalize_osm_gdf_to_canonical(osm_gdf_buildings)
+canonical_osm_gdf_buildings = normalize_bag_gdf_to_canonical(gdf_fetched)
 
 # %%
 canonical_osm_gdf_buildings.shape

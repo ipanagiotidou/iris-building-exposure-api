@@ -22,6 +22,7 @@ In SQLAlchemy’s declarative style, each MAPPED CLASS represents a table defini
 
 """
 
+
 # The canonical building table should be STRICT, not permissive.
 # We want to enforce a consistent, clean, canonical schema. 
 class Building(Base):

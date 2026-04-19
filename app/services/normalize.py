@@ -304,6 +304,7 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
     else:
         gdf["num_storeys"] = None
 
+    # TODO: IS IT IN METERS? 
     # height_m from height tag
     # NOTE: I will try to parse height values like '12', '12.5', '12 m' into float, but if it fails I will keep it as None.
     if "height" in gdf.columns:
@@ -321,9 +322,8 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
     # year_built 
     gdf["year_built"] = None # placeholder for later enrichment. Not present in OSM.
 
-
-    # floorspace_m2 --> should be footprint area * num_storeys, but num_storeys is often missing in OSM. 
-    gdf["floorspace_m2"] = gdf["footprint_area_m2"] * gdf["num_storeys"]  # number * NaN = NaN -> Have in mind that: pandas NaN → SQL NULL
+    # floorspace_m2
+    gdf["floorspace_m2"] = None  #  Should be None if not present 
     
 
     #  TAGS:
@@ -394,6 +394,8 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
 
 
     final_gdf = gdf[canonical_cols].copy()
+
+    # rename geometry into geom for PostGIS
     final_gdf = final_gdf.rename(
         columns={
             "geometry": "geom",
@@ -448,7 +450,7 @@ def prepare_raw_bag_buildings_gdf(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.GeoD
     else:
         # the index is reset to a simple range (in fetching function) from 0 to len(raw_osm_gdf)-1, 
         # so I can use it as bag_id, but I need to convert it to ... to match the BAGBuildingRaw model data type.
-        raw_bag_gdf["osm_id"] = raw_bag_gdf.index  # .astype(str)
+        raw_bag_gdf["bag_id"] = raw_bag_gdf.index  # .astype(str)
 
 
     # Normalize 
@@ -492,3 +494,162 @@ def prepare_raw_bag_buildings_gdf(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.GeoD
 
 
 ### --------- 2.2 BAG. - normalized  ------------------------------------------------------------------------------
+
+
+
+def normalize_bag_gdf_to_canonical(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """
+    Convert fetched BAG buildings into the canonical building schema.
+
+    fetched BAG gdf
+    → normalize_bag_to_canonical(...)
+    → ingest_canonical_buildings_gdf(...)
+    → buildings table
+    """
+
+    gdf = fetched_bag_gdf.copy()
+
+    # NOTE: 
+    #   - NOT THE RIGHT MOMENT TO EXCLUDE buildings based on status  (demolished, etc.) --> After Matching Geometry Algorithm
+    #   *** DO NOT IMPLEMENT HERE: gdf = gdf[~gdf["building"].isin(REJECT_BUILDING_VALUES)].copy()
+
+
+    # IDENTITY ATTRIBUTES:
+    # Set the source dataset column to "bag" for all records. 
+    gdf["source_dataset"] = "bag"
+
+    # Normalize the source record id - Similar to the prepare_raw_osm_buildings_gdf function, but ... more.
+    # NOTE: cast to str in the canonical layer because I want a consistent, stable, system-wide identifier!
+    if "identificatie" in gdf.columns:
+        gdf["source_record_id"] = gdf["identificatie"].astype(str)
+
+    else:
+        # after flattenin the multi-index inside fetching function, 
+        # the index is reset to a simple range (in fetching function) from 0 to len(raw_osm_gdf)-1, 
+        # so I can use it as osm_id, but I need to convert it to string to match the BAGBuildingRaw model.
+        gdf["source_record_id"] = gdf.index.astype(str).astype(str)
+
+
+
+    # GEOMETRY & GEOMETRY-DERIVED ATTRIBUTES : geometry, centroid, footprint_area_m2, floorspace_m2 (if building:levels is available)
+    # - plane Geometry is handled in the ingestion step.
+
+    # Estimate UTM zone for accurate area and distance calculations.
+    # UTM is great when:
+    # - your data is in a relatively compact area
+    # - the dataset stays mostly inside one UTM zone
+     
+    local_epsg = estimate_local_utm_epsg(gdf)
+    metric_gdf = gdf.to_crs(local_epsg)
+    
+    # centroid calculated in projected coordinates and stored back in 4326, because --> database, web maps & APIs expect 4326
+    # gdf["centroid"] = metric_gdf.geometry.centroid.to_crs(gdf.crs) # was giving issues --> FIX LATER (I NEED IT FOR THE MATCHING GEOMETRY RESOLUTION)
+    gdf["centroid"] = None
+    
+    gdf["footprint_area_m2"] = metric_gdf.geometry.area
+
+
+
+    # PARSE MAIN RAW ATTRIBUTES TO CONSTRUCT THE CANONICAL ATTRIBUTES.
+    
+    # MAIN ATTRIBUTES: building_type, construction_type, occupancy_type, num_storeys, height_m, roof_shape, year_built
+    
+    gdf["building_type"] = None  # not present in BAG dataset 
+    gdf["construction_type"] = None # not present in BAG dataset
+        # occupancy_type from gebruiksdoel tag
+    if "gebruiksdoel" in gdf.columns:
+        gdf["occupancy_type"] = gdf["gebruiksdoel"].apply(clean_value) # returns the value or None.  (might still contain cast back into NaNs after this)
+    else:
+        gdf["occupancy_type"] = None
+
+
+    gdf["num_storeys"] = None  # not present in BAG dataset 
+    gdf["height_m"] = None     # not present in BAG dataset  
+    gdf["roof_shape"] = None   # not present in BAG dataset  
+
+    # year_built from bouwjaar   
+    # IMPORTANT NOTE AND IMPROVE: similar to the number of storeys ... (OSM) returns 0 when there is no information. 
+    gdf["year_built"] = gdf["gebruiksdoel"].apply(parse_int_maybe)  
+
+    # floorspace_m2
+    gdf["floorspace_m2"] = None # should be None if not present. 
+    
+
+    #  TAGS:
+    gdf["tags_json"] = None # No tags for BAG 
+
+ 
+    # PROVENANCE ATTRIBUTES: building_type_source, construction_type_source, occupancy_type_source, num_storeys_source, height_m_source, roof_shape_source, year_built_source
+    # ... TO DO
+    gdf["building_type_source"] = None
+    gdf["construction_type_source"] = None 
+    gdf["occupancy_type_source"] = None
+    gdf["num_storeys_source"] = None
+    gdf["height_m_source"] = None
+    gdf["roof_shape_source"] = None
+    gdf["year_built_source"] = None
+
+    # LATER PIPELINE FIELDS: is_matched, match_id, match_score, inference_method, confidence_score, notes
+    gdf["is_matched"] = False
+    gdf["match_id"] = None
+    gdf["match_score"] = None
+    gdf["inference_method"] = None      
+    gdf["confidence_score"] = None
+    gdf["notes"] = None
+
+    canonical_cols = [
+
+        # Identity
+        "source_dataset",
+        "source_record_id",
+
+
+        # Core attributes 
+        "building_type",
+        "construction_type",
+        "occupancy_type",
+        "num_storeys",
+        "height_m",
+        "roof_shape",
+        "year_built",
+
+        # Provenance - Source - Origin
+        "building_type_source",
+        "construction_type_source",
+        "occupancy_type_source",
+        "num_storeys_source",
+        "height_m_source",
+        "roof_shape_source",
+        "year_built_source",
+
+        # tags
+        "tags_json",
+
+        # Geometry & geometry-derived
+        "footprint_area_m2",
+        "floorspace_m2",
+        "centroid",
+        "geometry",
+
+        # Later pipeline fields
+        "is_matched",
+        "match_id",
+        "match_score",
+        "inference_method",
+        "confidence_score",
+        "notes"
+
+        ]
+
+
+    final_gdf = gdf[canonical_cols].copy()
+    
+    # rename geometry into geom for PostGIS
+    final_gdf = final_gdf.rename(
+        columns={
+            "geometry": "geom",
+        }
+    )
+    final_gdf = final_gdf.set_geometry("geom")
+
+    return final_gdf

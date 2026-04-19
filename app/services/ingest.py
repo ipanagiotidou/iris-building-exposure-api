@@ -169,3 +169,5 @@ def ingest_raw_bag_buildings(raw_bag_gdf: GeoDataFrame, db: Session) -> int:
         
     db.commit()
     return inserted 
+
+
