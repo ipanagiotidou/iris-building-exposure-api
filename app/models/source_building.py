@@ -91,3 +91,5 @@ class MicrosoftBuildingRaw(Base):
     # properties: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     # geom: Mapped[object] = mapped_column(Geometry("MULTIPOLYGON", srid=4326), nullable=False)
     # ingested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+

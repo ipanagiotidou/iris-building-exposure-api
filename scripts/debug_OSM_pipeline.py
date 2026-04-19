@@ -133,13 +133,7 @@ for col in ["building", "building:levels", "height", "roof:shape"]:
 ###### Section 1.1.1:  INSPECT THE VALUES OF SPECIFIC COLUMNS (INCLUDING NaNs):  ######
 
 # %%
-for col in ['type', 'location','level','roof:height','roof:orientation',"building", "building:use", 'building:levels', 'building:levels:underground', 'building:min_level', 'min_level', 'building:material','height', "roof:shape", "roof:material"]:
-    if col in osm_gdf_buildings.columns:
-        print("\n", col)
-        print(osm_gdf_buildings[col].value_counts(dropna=False).head(20))
-
-# %%
-for col in ['type', 'location','level','roof:height','roof:orientation',"building", "building:use", 'building:levels', 'building:levels:underground', 'building:min_level', 'min_level', 'building:material','height', "roof:shape", "roof:material"]:
+for col in ['id', 'type', 'location','level','roof:height','roof:orientation',"building", "building:use", 'building:levels', 'building:levels:underground', 'building:min_level', 'min_level', 'building:material','height', "roof:shape", "roof:material"]:
     if col in osm_gdf_buildings.columns:
         print("\n", col)
         print(osm_gdf_buildings[col].value_counts(dropna=False).head(20))
