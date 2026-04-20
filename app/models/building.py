@@ -61,10 +61,6 @@ class BuildingCanonicalBase(Base):
     roof_shape: Mapped[str | None] = mapped_column(String(100), nullable=True)
     year_built: Mapped[str | None] = mapped_column(Integer, nullable=True)
 
-    # full source tags snapshot as JSON  
-    tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=False)
-
-
     # Provenance - Source - Origin 
     building_type_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     construction_type_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -82,10 +78,12 @@ class BuildingCanonicalBase(Base):
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
 
-
     # Created 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # full source tags snapshot as JSON  
+    tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=False)
 
     # Geometry
     centroid: Mapped[object | None] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
@@ -107,20 +105,3 @@ class BAGCanonicalBuilding(BuildingCanonicalBase):
 class Building(BuildingCanonicalBase):
     __tablename__ = "buildings"
 
-
-
-
-# # matching buildings
-# building_matches
-
-# This match table can hold:
-
-# id
-# osm_building_id
-# bag_building_id
-# match_iou
-# centroid_distance_m
-# intersection_area_m2
-# match_status
-# match_confidence
-# match_method

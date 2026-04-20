@@ -190,7 +190,7 @@ def prepare_raw_osm_buildings_gdf(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoD
         "roof:direction",
 
         # full tags
-        "tags_json"
+        "tags_json",
 
         # geometry 
         "geometry",

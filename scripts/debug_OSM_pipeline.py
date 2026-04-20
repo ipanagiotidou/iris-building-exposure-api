@@ -1,4 +1,3 @@
-
 # %%
 # *** DO NOT FORGET TO RESTART THE KERNEL IF NEEDED - AFTER EDITING THE CODE, TO MAKE SURE THAT THE CHANGES ARE REFLECTED IN THE DEBUGGING PROCESS.
 # with this code, I add the root of the project to the sys.path, so that I can import from the app package.
@@ -57,7 +56,7 @@ type(polygon)
 # -  Flattens multi-index to normal columns
 # -  Ensures CRS is set to 4326
 # -  Checks for valid geometries and filters out invalid ones before ingesting into the database. 
-osm_gdf_buildings = fetch_osm_buildings_from_polygon(polygon)
+osm_gdf_buildings = fetch_osm_buildings_from_polygon(polygon= box(4.357, 52.006, 4.367, 52.012))
 
 # %%
 # check: should be a gdf
@@ -233,7 +232,7 @@ canonical_osm_gdf_buildings.head().T
 db = SessionLocal()
 
 # THIS FUNCTION HAS MORE ARGUMENTS NOW.  OSMCanonicalBuilding
-canonical_count = ingest_canonical_buildings(canonical_osm_gdf_buildings, db)
+canonical_count = ingest_canonical_buildings(canonical_osm_gdf_buildings, db, OSMCanonicalBuilding)
 print(f"Inserted canonical rows: {canonical_count}")
 
 db.close()

@@ -25,17 +25,16 @@ from shapely.geometry import Polygon, box
 from app.core import db
 from app.core.db import SessionLocal
 
-from app.services.match import compute_osm_bag_match_candidates
+from app.services.match import match_osm_bag_buildings_with_postgis
 
 
 # %%
 db = SessionLocal()
-result = compute_osm_bag_match_candidates(db=db)
+result = match_osm_bag_buildings_with_postgis(db=db)
 db.close()
 
 # %%
 type(result)
 # %%
-for r in result: 
-    print(r)
+result[:10]
 # %%

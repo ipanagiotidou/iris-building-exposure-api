@@ -207,7 +207,7 @@ print(type(geom))         # Python type
 
 
 # %%
-# # Insert the prepared raw OSM gdf into the OSMBuildingRaw table in the database, and check that it is correctly inserted.
+# # Insert the prepared raw BAG gdf into the OSMBuildingRaw table in the database, and check that it is correctly inserted.
 db = SessionLocal()
 
 raw_ingested_count = ingest_raw_bag_buildings(prepared_raw_bag_gdf_buildings, db)
@@ -222,18 +222,18 @@ db.close()
 
 
 # %%
-canonical_osm_gdf_buildings = normalize_bag_gdf_to_canonical(gdf_fetched)
+canonical_bag_gdf_buildings = normalize_bag_gdf_to_canonical(gdf_fetched)
 
 # %%
-canonical_osm_gdf_buildings.shape
+canonical_bag_gdf_buildings.shape
 
 # %%
-canonical_osm_gdf_buildings.head().T
+canonical_bag_gdf_buildings.head().T
 
 # %%
 db = SessionLocal()
 
-canonical_count = ingest_canonical_buildings(canonical_osm_gdf_buildings, db, BAGCanonicalBuilding)
+canonical_count = ingest_canonical_buildings(canonical_bag_gdf_buildings, db, BAGCanonicalBuilding)
 print(f"Inserted canonical rows: {canonical_count}")
 
 db.close()

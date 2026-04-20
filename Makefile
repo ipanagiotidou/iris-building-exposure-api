@@ -59,3 +59,6 @@ enable-postgis:
 # enable postgis & create tables in one command
 init-db: enable-postgis
 	poetry run python -m scripts.init_db
+
+ingest-all:
+	poetry run python -m scripts.run_ingest_all
