@@ -36,18 +36,19 @@ REJECT_BAG_BUILDING_BASED_ON_STATUS = {
 }
 
 
-# I could move this function to a utils file, but for now I will keep it here. 
-def utm_epsg_from_lonlat(lon: float, lat: float) -> int:
-    zone = floor((lon + 180) / 6) + 1
-    if lat >= 0:
-        return 32600 + zone
-    return 32700 + zone
+# # I could move this function to a utils file, but for now I will keep it here. 
+# def utm_epsg_from_lonlat(lon: float, lat: float) -> int:
+#     zone = floor((lon + 180) / 6) + 1
+#     if lat >= 0:
+#         return 32600 + zone
+#     return 32700 + zone
 
-# I could move this function to a utils file, but for now I will keep it here. 
-def estimate_local_utm_epsg(gdf):
-    centroid = gdf.unary_union.centroid
-    lon, lat = centroid.x, centroid.y
-    return utm_epsg_from_lonlat(lon, lat)
+
+# # I could move this function to a utils file, but for now I will keep it here. 
+# def estimate_local_utm_epsg(gdf):
+#     centroid = gdf.unary_union.centroid
+#     lon, lat = centroid.x, centroid.y
+#     return utm_epsg_from_lonlat(lon, lat)
 
 
 # BUG: 
@@ -90,7 +91,7 @@ def build_tags_dict(row: pd.Series) -> dict[str, Any]:
             tags[key] = cleaned
     return tags
 
-
+# For height : 2 <= height_m <= 300
 def parse_float_maybe(value: Any) -> float | None:
     """
     Parse values like '12', '12.5', '12 m' into float.
@@ -106,7 +107,9 @@ def parse_float_maybe(value: Any) -> float | None:
         return None
 
 
-def parse_int_maybe(value: Any) -> int:
+# For number of storeys and year_built : 
+# - number of storeys : 1 <= num_storeys <= 250
+def parse_int_maybe(value: Any) -> int | None:
     """
     Parse values like '3', '3.0' into int.
     Returns 0 for records without storey information.
@@ -115,12 +118,41 @@ def parse_int_maybe(value: Any) -> int:
 
     # could be missing: 
     if value is None:
-        return 0
+        return None
 
     try:
-        return int(float(value))
+        parsed = int(float(str(value)))
+        return parsed
     except Exception:
-        return 0
+        return None
+
+
+def normalize_height_m(value: Any) -> float | None:
+    h = parse_float_maybe(value)
+    if h is None:
+        return None
+    if h < 2 or h > 500:
+        return None
+    return h
+
+
+def normalize_num_storeys(value: Any) -> int | None:
+    n = parse_int_maybe(value)
+    if n is None:
+        return None
+    if n < 1 or n > 250:
+        return None
+    return n
+
+
+def normalize_year_built(value: Any) -> int | None:
+    y = parse_int_maybe(value)
+    if y is None:
+        return None
+    if y < 1000 or y > 2026:
+        return None
+    return y
+
 
 
 
@@ -210,7 +242,7 @@ def prepare_raw_osm_buildings_gdf(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.GeoD
         if col not in raw_osm_gdf.columns:
             raw_osm_gdf[col] = None
 
-    # keep only the columns I want in the raw table, and in the order I want.
+    # keep only the columns I want in the raw table. 
     prepared_raw_osm_gdf = raw_osm_gdf[raw_cols].copy()
 
     return prepared_raw_osm_gdf
@@ -263,15 +295,16 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
     # - your data is in a relatively compact area
     # - the dataset stays mostly inside one UTM zone
      
-    local_epsg = estimate_local_utm_epsg(gdf)
+    local_epsg = 28992  # #  GeoPandas handle the full coordinate transformation: WGS84 (ellipsoid A) --> transformed to Amersfoort datum (ellipsoid Bessel 1841) --> projected  (meters)
     metric_gdf = gdf.to_crs(local_epsg)
     
     # centroid calculated in projected coordinates and stored back in 4326 
     #   because --> database, web maps & APIs expect 4326
-    # gdf["centroid"] = metric_gdf.geometry.centroid.to_crs(gdf.crs) # was giving issues
-    gdf["centroid"] = None
-    
-    gdf["footprint_area_m2"] = metric_gdf.geometry.area
+    # NOT gdf["centroid"] = metric_gdf.geometry.centroid.to_crs(gdf.crs) 
+    # gdf["centroid"] = None
+
+
+    gdf["footprint_area_m2"] = None # IT WILL BE DERIVED. DO NOT CALCULATE LIKE metric_gdf.geometry.area  # IMPROVEMENT:  This should be DERIVED AT THE END 
 
 
 
@@ -320,7 +353,7 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
         gdf["roof_shape"] = None
 
     # year_built 
-    gdf["year_built"] = None # placeholder for later enrichment. Not present in OSM.
+    gdf["year_built"] = gdf["start_date"] # placeholder for later enrichment. Not present in OSM.
 
     # floorspace_m2
     gdf["floorspace_m2"] = None  #  Should be None if not present 
@@ -332,13 +365,14 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
  
     # PROVENANCE ATTRIBUTES: building_type_source, construction_type_source, occupancy_type_source, num_storeys_source, height_m_source, roof_shape_source, year_built_source
     # ... TO DO
-    gdf["building_type_source"] = None
-    gdf["construction_type_source"] = None 
-    gdf["occupancy_type_source"] = None
-    gdf["num_storeys_source"] = None
-    gdf["height_m_source"] = None
-    gdf["roof_shape_source"] = None
-    gdf["year_built_source"] = None
+    gdf["building_type_source"] = "osm.building"
+    gdf["construction_type_source"] = "osm.building:material" 
+    gdf["occupancy_type_source"] = "osm.building:use"
+    gdf["num_storeys_source"] = "osm.building:levels"
+    gdf["height_m_source"] = "osm.height"
+    gdf["roof_shape_source"] = "osm.roof:shape"
+    gdf["year_built_source"] =  "osm.start_date"
+
 
     # LATER PIPELINE FIELDS: is_matched, match_id, match_score, inference_method, confidence_score, notes
     gdf["is_matched"] = False
@@ -379,7 +413,7 @@ def normalize_osm_gdf_to_canonical(fetched_osm_gdf: gpd.GeoDataFrame) -> gpd.Geo
         # Geometry & geometry-derived
         "footprint_area_m2",
         "floorspace_m2",
-        "centroid",
+        # NOT "centroid",
         "geometry",
 
         # Later pipeline fields
@@ -539,15 +573,14 @@ def normalize_bag_gdf_to_canonical(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.Geo
     # - your data is in a relatively compact area
     # - the dataset stays mostly inside one UTM zone
      
-    local_epsg = estimate_local_utm_epsg(gdf)
+    local_epsg = 28992  #  GeoPandas handle the full coordinate transformation: WGS84 (ellipsoid A) --> transformed to Amersfoort datum (ellipsoid Bessel 1841) --> projected  (meters)
     metric_gdf = gdf.to_crs(local_epsg)
     
-    # centroid calculated in projected coordinates and stored back in 4326, because --> database, web maps & APIs expect 4326
-    # gdf["centroid"] = metric_gdf.geometry.centroid.to_crs(gdf.crs) # was giving issues --> FIX LATER (I NEED IT FOR THE MATCHING GEOMETRY RESOLUTION)
-    gdf["centroid"] = None
+    # # centroid calculated in projected coordinates and stored back in 4326, because --> database, web maps & APIs expect 4326
+    # NOT gdf["centroid"] = metric_gdf.geometry.centroid.to_crs(gdf.crs) 
+    # # gdf["centroid"] = None  # fallback
     
-    gdf["footprint_area_m2"] = metric_gdf.geometry.area
-
+    gdf["footprint_area_m2"] = None # IT WILL BE DERIVED. DO NOT CALCULATE LIKE metric_gdf.geometry.area
 
 
     # PARSE MAIN RAW ATTRIBUTES TO CONSTRUCT THE CANONICAL ATTRIBUTES.
@@ -569,7 +602,7 @@ def normalize_bag_gdf_to_canonical(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.Geo
 
     # year_built from bouwjaar   
     # IMPORTANT NOTE AND IMPROVE: similar to the number of storeys ... (OSM) returns 0 when there is no information. 
-    gdf["year_built"] = gdf["gebruiksdoel"].apply(parse_int_maybe)  
+    gdf["year_built"] = gdf["bouwjaar"].apply(parse_int_maybe)  
 
     # floorspace_m2
     gdf["floorspace_m2"] = None # should be None if not present. 
@@ -582,12 +615,12 @@ def normalize_bag_gdf_to_canonical(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.Geo
     # PROVENANCE ATTRIBUTES: building_type_source, construction_type_source, occupancy_type_source, num_storeys_source, height_m_source, roof_shape_source, year_built_source
     # ... TO DO
     gdf["building_type_source"] = None
-    gdf["construction_type_source"] = None 
-    gdf["occupancy_type_source"] = None
+    gdf["construction_type_source"] = None
+    gdf["occupancy_type_source"] = "bag.gebruiksdoel"
     gdf["num_storeys_source"] = None
     gdf["height_m_source"] = None
     gdf["roof_shape_source"] = None
-    gdf["year_built_source"] = None
+    gdf["year_built_source"] = "bag.bouwjaar"
 
     # LATER PIPELINE FIELDS: is_matched, match_id, match_score, inference_method, confidence_score, notes
     gdf["is_matched"] = False
@@ -628,7 +661,7 @@ def normalize_bag_gdf_to_canonical(fetched_bag_gdf: gpd.GeoDataFrame) -> gpd.Geo
         # Geometry & geometry-derived
         "footprint_area_m2",
         "floorspace_m2",
-        "centroid",
+        # "centroid",
         "geometry",
 
         # Later pipeline fields

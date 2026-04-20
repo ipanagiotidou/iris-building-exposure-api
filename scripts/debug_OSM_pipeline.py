@@ -222,6 +222,7 @@ db.close()
 # %%
 canonical_osm_gdf_buildings = normalize_osm_gdf_to_canonical(osm_gdf_buildings)
 
+
 # %%
 canonical_osm_gdf_buildings.shape
 

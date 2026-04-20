@@ -80,6 +80,9 @@ class OSMBuildingRaw(Base):
     building_levels: Mapped[str | None] = mapped_column(String(50), nullable=True)
     building_material: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
+    ref_bag: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    start_date: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     height: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     roof_shape: Mapped[str | None] = mapped_column(String(50), nullable=True)

@@ -24,7 +24,7 @@ from app.core.db import Base
 from app.models.building import Building
 from app.models.source_building import OSMBuildingRaw, BAGBuildingRaw
 
-from app.services.normalize import clean_value
+from app.services.normalize import clean_value, parse_float_maybe, normalize_height_m, normalize_num_storeys, normalize_year_built
 
 
 ### --------- 1. OSM.   ------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
     # iterrows() iterate over the rows of a DataFrame as (index, Series) pairs and insert them into the database
     # for larger datasets, it would be more efficient to use bulk insert methods, but not in the scope of this project.
     for _, row in raw_osm_gdf.iterrows():  # index, row pairs 
-        osm_id=str(row.get("osm_id"))
+        osm_id=str(row.get("osm_id"))    
         element=row.get("element")
 
         # Ensure uniqueness of building records
@@ -75,18 +75,18 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
 
             geom = from_shape(row.geometry, srid=4326), # this function converts a Shapely geometry to a WKBElement that can be stored in PostGIS. It also sets the SRID to 4326. 
             
-            building = row.get("building"), 
-            building_use=row.get("building:use"),
-            building_levels=row.get("building:levels"),
-            building_material=row.get("building:material"),
-            height=row.get("height"),
+            building = clean_value(row.get("building")), 
+            building_use=clean_value(row.get("building:use")),
+            building_levels=clean_value(row.get("building:levels")),
+            building_material=clean_value(row.get("building:material")),
+            height=clean_value(row.get("height")),
 
-            roof_shape=row.get("roof:shape"),
-            roof_material=row.get("roof:material"),
-            roof_levels=row.get("roof:levels"),
-            roof_orientation=row.get("roof:orientation"),
-            roof_height=row.get("roof:height"), 
-            roof_direction=row.get("roof:direction"),
+            roof_shape=clean_value(row.get("roof:shape")),
+            roof_material=clean_value(row.get("roof:material")),
+            roof_levels=clean_value(row.get("roof:levels")),
+            roof_orientation=clean_value(row.get("roof:orientation")),
+            roof_height=clean_value(row.get("roof:height")), 
+            roof_direction=clean_value(row.get("roof:direction")),
 
             tags_json=row.get("tags_json")  # store all original tags as JSON
         )
@@ -148,12 +148,12 @@ def ingest_raw_bag_buildings(raw_bag_gdf: GeoDataFrame, db: Session) -> int:
             geom = from_shape(row.geometry, srid=4326), # this function converts a Shapely geometry to a WKBElement that can be stored in PostGIS. It also sets the SRID to 4326. 
             
             # value 0 is for buildings with unknown use. Don't touch here. Normalize in Canonical.
-            aantal_verblijfsobjecten = row.get("aantal_verblijfsobjecten"), 
-            bouwjaar=row.get("bouwjaar"),
+            aantal_verblijfsobjecten = clean_value(row.get("aantal_verblijfsobjecten")), 
+            bouwjaar=clean_value(row.get("bouwjaar")),
 
             # Important to call this function within the ingestion module. It turns NaN into [null] for PostGIS. 
             gebruiksdoel=clean_value(row.get("gebruiksdoel")),
-            status=row.get("status"),
+            status=clean_value(row.get("status")),
 
         )
 
@@ -187,19 +187,19 @@ def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session, model_c
             source_record_id=row["source_record_id"],
 
             geom=from_shape(row["geom"], srid=4326),
-            centroid=from_shape(row["centroid"], srid=4326) if row["centroid"] is not None else None,
+            # NOT centroid=from_shape(row["centroid"], srid=4326) if row["centroid"] is not None else None,
             footprint_area_m2=row.get("footprint_area_m2"),
             floorspace_m2=row.get("floorspace_m2"),
 
             building_type=row.get("building_type"),
             construction_type=row.get("construction_type"),
             occupancy_type=row.get("occupancy_type"),
-            num_storeys=row.get("num_storeys"),  
+            num_storeys=normalize_num_storeys(row.get("num_storeys")),  
             
 
-            height_m=row.get("height_m"),
+            height_m=normalize_height_m(row.get("height_m")),
             roof_shape=row.get("roof_shape"),
-            year_built=row.get("year_built"),
+            year_built=normalize_year_built(row.get("year_built")),
 
             
 

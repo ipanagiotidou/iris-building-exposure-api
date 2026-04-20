@@ -23,7 +23,7 @@ class BuildingMatch(Base):
     bag_building_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
     match_iou: Mapped[float | None] = mapped_column(Float, nullable=True)      # IoU (Intersection over Union) --> Overlap Quality
-    centroid_distance_m: Mapped[float | None] = mapped_column(Float, nullable=True)     # Proximity Quality 
+    # NOT centroid_distance_m: Mapped[float | None] = mapped_column(Float, nullable=True)     # Proximity Quality 
     intersection_area_m2: Mapped[float | None] = mapped_column(Float, nullable=True)     # Useful for Debugging
 
 

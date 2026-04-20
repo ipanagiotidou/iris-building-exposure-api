@@ -90,7 +90,7 @@ class BuildingCanonicalBase(Base):
     tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Geometry
-    centroid: Mapped[object | None] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
+    # NOT centroid: Mapped[object | None] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
     geom: Mapped[object] = mapped_column(Geometry("MULTIPOLYGON", srid=4326), nullable=False)
 
     def __repr__(self) -> str:
