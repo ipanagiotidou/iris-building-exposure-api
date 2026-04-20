@@ -45,16 +45,18 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
     # similar to ... “Give me only these two columns from the table”
     # .all() executes the query and returns all results. Returns list[tuple]
     # the list turns into a set 
+    # str() to avoid mismatches like "123" vs 123
     existing_keys = set(
-        db.query(OSMBuildingRaw.element, OSMBuildingRaw.osm_id).all()
+        (element, str(osm_id))
+        for element, osm_id in db.query(OSMBuildingRaw.element, OSMBuildingRaw.osm_id).all()
     )
 
 
     # iterrows() iterate over the rows of a DataFrame as (index, Series) pairs and insert them into the database
     # for larger datasets, it would be more efficient to use bulk insert methods, but not in the scope of this project.
     for _, row in raw_osm_gdf.iterrows():  # index, row pairs 
-        osm_id=str(row.get("osm_id")),
-        element=row.get("element"),
+        osm_id=str(row.get("osm_id"))
+        element=row.get("element")
 
         # Ensure uniqueness of building records
         key = (element, osm_id)
@@ -92,8 +94,13 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
         db.add(record)
         existing_keys.add(key)
         inserted += 1
-        
-    db.commit()
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print("OSM commit failed:", repr(e))
+        raise
     return inserted 
 
 
@@ -154,7 +161,12 @@ def ingest_raw_bag_buildings(raw_bag_gdf: GeoDataFrame, db: Session) -> int:
         existing_bag_ids.add(bag_id)
         inserted += 1
         
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print("OSM commit failed:", repr(e))
+        raise
     return inserted 
 
 
@@ -213,5 +225,10 @@ def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session, model_c
         db.add(building)
         inserted += 1
 
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print("OSM commit failed:", repr(e))
+        raise
     return inserted 

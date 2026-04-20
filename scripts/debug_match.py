@@ -32,9 +32,4 @@ from app.services.match import match_osm_bag_buildings_with_postgis
 db = SessionLocal()
 result = match_osm_bag_buildings_with_postgis(db=db)
 db.close()
-
-# %%
-type(result)
-# %%
-result[:10]
-# %%
+result

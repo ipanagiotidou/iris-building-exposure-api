@@ -62,3 +62,10 @@ init-db: enable-postgis
 
 ingest-all:
 	poetry run python -m scripts.run_ingest_all
+
+match:
+	poetry run python -m scripts.run_match_osm_bag
+
+
+
+

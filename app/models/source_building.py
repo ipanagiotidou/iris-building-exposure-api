@@ -57,12 +57,13 @@ class OSMBuildingRaw(Base):
     
     __tablename__ = "osm_buildings_raw"
 
-    # What makes one raw OSM record unique
-    # OSM SCHEMA: Osm_id is unique only within object type. (relation, way, node)
-    __tableargs__ = (
-        UniqueConstraint("element", "osm_id", name= "uq_osm_raw_element_osm_id")
+    #  __table_args__ attribute allows passing extra arguments to that Table. 
+    # UniqueConstraint("col2", "col3", name="uix_1")
+    # What makes one raw OSM record unique --> Osm_id is unique only within object type. (relation, way, node)
+    __table_args__ = (
+        UniqueConstraint("element", "osm_id", name= "uq_osm_raw_element_osm_id"),
     )
-
+    
 
     # this id is NOT based on pandas index 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -132,6 +133,8 @@ class BAGBuildingRaw(Base):
     
     __tablename__ = "bag_buildings_raw"
 
+    #  __table_args__ attribute allows passing extra arguments to that Table. 
+    # UniqueConstraint("col2", "col3", name="uix_1")
     __table_args__ = (
         UniqueConstraint("bag_id", name="uq_bag_raw_bag_id"),
     )

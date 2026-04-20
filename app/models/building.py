@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import UniqueConstraint
 from geoalchemy2 import Geometry
 
 from sqlalchemy.dialects.postgresql import JSONB
@@ -42,7 +43,8 @@ GENERAL THINGS:
 # We want to enforce a consistent, clean, canonical schema. 
 class BuildingCanonicalBase(Base):
     __abstract__ = True
-    
+
+
     # Identity
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     source_dataset: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
@@ -69,9 +71,11 @@ class BuildingCanonicalBase(Base):
     height_m_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     roof_shape_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     year_built_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    geometry_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
 
     # Later pipeline fields
-    is_matched: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_matched: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
     match_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     inference_method: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -83,7 +87,7 @@ class BuildingCanonicalBase(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     # full source tags snapshot as JSON  
-    tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=False)
+    tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Geometry
     centroid: Mapped[object | None] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
@@ -97,9 +101,21 @@ class BuildingCanonicalBase(Base):
 class OSMCanonicalBuilding(BuildingCanonicalBase):
     __tablename__ = "osm_buildings_canonical"
 
+    # # IMPROVEMENT FOR DUPLICATES: 
+    # # I SHOULD ENFORCE A UNIQUE CONSTRAINT HERE AS WELL. 
+    # # I AM MISSING THE ELEMENT COLUMN TO CONSTRUCT IT and make it robust
+    # __table_args__ = (
+    #     UniqueConstraint("source_record_id"),
+    # )
 
 class BAGCanonicalBuilding(BuildingCanonicalBase):
     __tablename__ = "bag_buildings_canonical"
+
+    # # DUPLICATES NO MORE:
+    # # UniqueConstraint("col2", "col3", name="uix_1")
+    # __table_args__ = (
+    #     UniqueConstraint("source_record_id"),
+    # )
 
 
 class Building(BuildingCanonicalBase):

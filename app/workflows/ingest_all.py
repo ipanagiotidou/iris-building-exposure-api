@@ -77,3 +77,4 @@ def run_full_ingestion_workflow(polygon: Polygon = box(4.357, 52.006, 4.367, 52.
         "osm": osm_result,
         "bag": bag_result,
     }
+

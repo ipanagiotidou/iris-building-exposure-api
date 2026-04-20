@@ -46,34 +46,36 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
             SELECT
                 o.id AS osm_building_id,
                 b.id AS bag_building_id,
+                ST_Transform(o.geom, 3857) AS o_geom_3857,
+                ST_Transform(b.geom, 3857) AS b_geom_3857                
 
-                ST_Area(
-                    ST_Intersection(
-                        ST_Transform(o.geom, 3857),
-                        ST_Transform(b.geom, 3857)
-                    )
-                ) AS intersection_area_m2,
-
-                ST_Area(ST_Transform(o.geom, 3857)) AS osm_area_m2,
-                ST_Area(ST_Transform(b.geom, 3857)) AS bag_area_m2,
-
-                ST_Distance(
-                    ST_Centroid(ST_Transform(o.geom, 3857)),
-                    ST_Centroid(ST_Transform(b.geom, 3857))
-                ) AS centroid_distance_m
-
-            FROM buildings_osm_canonical o
-            JOIN buildings_bag_canonical b
+            FROM osm_buildings_canonical o
+            JOIN bag_buildings_canonical b
             ON ST_Intersects(o.geom, b.geom)
         ),
-        scored AS (
+        scored1 AS (
+            SELECT
+                osm_building_id,
+                bag_building_id,
+                ST_Area(ST_Intersection(o_geom_3857, b_geom_3857)) AS intersection_area_m2,
+                ST_Area(o_geom_3857) AS osm_area_m2,
+                ST_Area(b_geom_3857) AS bag_area_m2,
+                ST_Distance(
+                    ST_Centroid(o_geom_3857),
+                    ST_Centroid(b_geom_3857)
+                ) AS centroid_distance_m
+            FROM candidates
+        ),
+        scored2 AS (
             SELECT
                 osm_building_id,
                 bag_building_id,
                 intersection_area_m2,
+                osm_area_m2,
+                bag_area_m2,
                 centroid_distance_m,
                 intersection_area_m2 / NULLIF((osm_area_m2 + bag_area_m2 - intersection_area_m2), 0) AS match_iou
-            FROM candidates
+            FROM scored1
         ),
         ranked AS (
             SELECT
@@ -82,10 +84,10 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
                     PARTITION BY osm_building_id
                     ORDER BY match_iou DESC, centroid_distance_m ASC
                 ) AS rn
-            FROM scored
+            FROM scored2
             WHERE
                 intersection_area_m2 > 0
-                AND intersection_area_m2 / NULLIF((osm_area_m2 + bag_area_m2 - intersection_area_m2), 0) >= 0.10
+                AND intersection_area_m2 / NULLIF((osm_area_m2 + bag_area_m2 - intersection_area_m2), 0) >= 0.5
                 AND centroid_distance_m <= 20
         )
         SELECT
@@ -99,9 +101,10 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
             match_iou AS match_confidence
         FROM ranked
         WHERE rn = 1;  
+               
     """)
 
-    #  ACTUAL EXAMPLE FROM WITH clause that creates temporary result "candidates": 
+    # WITH candidates AS (temporary result): creates something like...
     """ [{'osm_building_id': 1, 'bag_building_id': 1086, 'intersection_area_m2': 2858.3462500725964, 'osm_area_m2': 2858.7582824350866, 'bag_area_m2': 2858.7464188594977, 'centroid_distance_m': 0.002836518686952818},
       {'osm_building_id': 2, 'bag_building_id': 499, 'intersection_area_m2': 0.66649169711007, 'osm_area_m2': 2808.4664505405894, 'bag_area_m2': 213.86569388145136, 'centroid_distance_m': 35.51465309591829},
       {'osm_building_id': 2, 'bag_building_id': 902, 'intersection_area_m2': 2807.059288746372, 'osm_area_m2': 2808.4664505405894, 'bag_area_m2': 2807.408029189145, 'centroid_distance_m': 0.00928699453896358},
