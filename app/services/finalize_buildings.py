@@ -2,12 +2,16 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 
-def populate_geometry_in_final_buildings_table(db: Session) -> int:
+def populate_geometry_in_final_buildings_table(db: Session, rebuild: bool = False) -> int:
     """
     Populate the final canonical `buildings` table from:
     - matched BAG/OSM pairs -> keep BAG geometry
     - unmatched BAG buildings
     - unmatched OSM buildings
+
+    Args:
+    db: SQLAlchemy session
+    rebuild: if True, truncate the table before inserting
 
     Returns the number of inserted rows.
     """
@@ -70,24 +74,31 @@ def populate_geometry_in_final_buildings_table(db: Session) -> int:
             )
         )
 
-        SELECT source_dataset, source_record_id, geom, centroid
+        SELECT source_dataset, source_record_id, geometry_source, geom, centroid
         FROM matched_rows
 
         UNION ALL
 
-        SELECT source_dataset, source_record_id, geom, centroid
+        SELECT source_dataset, source_record_id, geometry_source, geom, centroid
         FROM unmatched_bag_rows
 
         UNION ALL
 
-        SELECT source_dataset, source_record_id, geom, centroid
+        SELECT source_dataset, source_record_id, geometry_source, geom, centroid
         FROM unmatched_osm_rows
 
         -- ON CONFLICT (source_dataset, source_record_id) DO NOTHING  ## I should have a constraint for this to work
     """)
 
-    result = db.execute(sql)
-    db.commit()
+    try:
+        if rebuild:
+            db.execute(text("TRUNCATE TABLE buildings RESTART IDENTITY"))
 
-    # rowcount may be -1 with some drivers, but with psycopg it is often available
-    return result.rowcount if result.rowcount is not None else 0
+        result = db.execute(sql)
+        db.commit()
+
+        return result.rowcount if result.rowcount is not None else 0
+
+    except Exception:
+        db.rollback()
+        raise

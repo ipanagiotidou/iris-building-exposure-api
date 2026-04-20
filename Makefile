@@ -66,6 +66,9 @@ ingest-all:
 match:
 	poetry run python -m scripts.run_match_osm_bag
 
+run-final:
+	poetry run python -m scripts.run_pipeline
+
 
 
 
