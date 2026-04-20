@@ -59,6 +59,10 @@ REJECT_BAG_BUILDING_BASED_ON_STATUS = {
 def clean_value(value: Any) -> Any:
     """
     Convert Pandas missing values (NaN)/ empty strings to Python None.
+    Normalize values:
+    - NaN → None
+    - strip whitespace
+    - lowercase strings
     """
     if value is None:
         return None
@@ -71,7 +75,7 @@ def clean_value(value: Any) -> Any:
         pass
 
     if isinstance(value, str):
-        value = value.strip()
+        value = value.strip() # .lower()      # lower(). --> can break things BE CAREFUL.
         if value == "":
             return None
     return value
@@ -154,6 +158,13 @@ def normalize_year_built(value: Any) -> int | None:
     return y
 
 
+def normalize_building_type(value):
+    value = clean_value(value)
+
+    if value == "yes":
+        return None  # or "unknown"
+
+    return value
 
 
 ### --------- 1. OSM.   ------------------------------------------------------------------------------

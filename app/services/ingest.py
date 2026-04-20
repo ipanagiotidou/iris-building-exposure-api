@@ -24,7 +24,7 @@ from app.core.db import Base
 from app.models.building import Building
 from app.models.source_building import OSMBuildingRaw, BAGBuildingRaw
 
-from app.services.normalize import clean_value, parse_float_maybe, normalize_height_m, normalize_num_storeys, normalize_year_built
+from app.services.normalize import clean_value, parse_float_maybe, normalize_height_m, normalize_num_storeys, normalize_year_built, normalize_building_type
 
 
 ### --------- 1. OSM.   ------------------------------------------------------------------------------
@@ -188,17 +188,17 @@ def ingest_canonical_buildings(canonical_gdf: GeoDataFrame, db: Session, model_c
 
             geom=from_shape(row["geom"], srid=4326),
             # NOT centroid=from_shape(row["centroid"], srid=4326) if row["centroid"] is not None else None,
-            footprint_area_m2=row.get("footprint_area_m2"),
-            floorspace_m2=row.get("floorspace_m2"),
+            footprint_area_m2=row.get("footprint_area_m2"),  # Derived
+            floorspace_m2=row.get("floorspace_m2"),          # Derived
 
-            building_type=row.get("building_type"),
-            construction_type=row.get("construction_type"),
-            occupancy_type=row.get("occupancy_type"),
+            building_type=normalize_building_type(row.get("building_type")),
+            construction_type=clean_value(row.get("construction_type")),
+            occupancy_type=clean_value(row.get("occupancy_type")),
             num_storeys=normalize_num_storeys(row.get("num_storeys")),  
             
 
             height_m=normalize_height_m(row.get("height_m")),
-            roof_shape=row.get("roof_shape"),
+            roof_shape=clean_value(row.get("roof_shape")),
             year_built=normalize_year_built(row.get("year_built")),
 
             

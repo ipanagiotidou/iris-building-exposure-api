@@ -21,8 +21,7 @@ def populate_geometry_in_final_buildings_table(db: Session, rebuild: bool = Fals
             source_dataset,
             source_record_id,
             geometry_source,
-            geom,
-            centroid
+            geom
         )
         WITH 
         accepted_matches AS (
@@ -37,8 +36,7 @@ def populate_geometry_in_final_buildings_table(db: Session, rebuild: bool = Fals
                 'bag' AS source_dataset,
                 b.source_record_id AS source_record_id,
                 'bag' AS geometry_source,
-                b.geom AS geom,
-                b.centroid AS centroid
+                b.geom AS geom
             FROM accepted_matches am
             JOIN bag_buildings_canonical b
               ON b.id = am.bag_building_id
@@ -49,8 +47,7 @@ def populate_geometry_in_final_buildings_table(db: Session, rebuild: bool = Fals
                 'bag' AS source_dataset,
                 b.source_record_id AS source_record_id,
                 'bag' AS geometry_source,
-                b.geom AS geom,
-                b.centroid AS centroid
+                b.geom AS geom
             FROM bag_buildings_canonical b
             WHERE NOT EXISTS (
                 SELECT 1
@@ -64,8 +61,7 @@ def populate_geometry_in_final_buildings_table(db: Session, rebuild: bool = Fals
                 'osm' AS source_dataset,
                 o.source_record_id AS source_record_id,
                 'osm' AS geometry_source,
-                o.geom AS geom,
-                o.centroid AS centroid
+                o.geom AS geom
             FROM osm_buildings_canonical o
             WHERE NOT EXISTS (
                 SELECT 1
@@ -74,20 +70,19 @@ def populate_geometry_in_final_buildings_table(db: Session, rebuild: bool = Fals
             )
         )
 
-        SELECT source_dataset, source_record_id, geometry_source, geom, centroid
+        SELECT source_dataset, source_record_id, geometry_source, geom
         FROM matched_rows
 
         UNION ALL
 
-        SELECT source_dataset, source_record_id, geometry_source, geom, centroid
+        SELECT source_dataset, source_record_id, geometry_source, geom
         FROM unmatched_bag_rows
 
         UNION ALL
 
-        SELECT source_dataset, source_record_id, geometry_source, geom, centroid
+        SELECT source_dataset, source_record_id, geometry_source, geom
         FROM unmatched_osm_rows
 
-        -- ON CONFLICT (source_dataset, source_record_id) DO NOTHING  ## I should have a constraint for this to work
     """)
 
     try:
