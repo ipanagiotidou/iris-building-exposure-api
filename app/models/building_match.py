@@ -22,13 +22,15 @@ class BuildingMatch(Base):
     osm_building_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     bag_building_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
+
     match_iou: Mapped[float | None] = mapped_column(Float, nullable=True)      # IoU (Intersection over Union) --> Overlap Quality
+    osm_coverage_ratio: Mapped[float | None] = mapped_column(Float, nullable=True) 
     centroid_distance_m: Mapped[float | None] = mapped_column(Float, nullable=True)     # Proximity Quality 
     intersection_area_m2: Mapped[float | None] = mapped_column(Float, nullable=True)     # Useful for Debugging
 
 
     match_method: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    match_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # match_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     match_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # IMPROVEMENT: POPULATE THIS VARIABLE...

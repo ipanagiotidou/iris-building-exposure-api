@@ -32,13 +32,13 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
     """
     sql = text("""
         INSERT INTO building_matches (
-            osm_building_id,
             bag_building_id,
+            osm_building_id,
+            osm_coverage_ratio,
             match_iou,
             centroid_distance_m,
             intersection_area_m2,
             match_method,
-            match_status,
             match_confidence
         )
         WITH candidates AS (
@@ -98,7 +98,7 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
             'geometry_cov_ratio_iou_centroid' AS match_method,
             match_iou AS match_confidence
         FROM ranked
-        WHERE rn = 1;
+        -- WHERE rn = 1;  -- DO NOT INCLUDE THIS LINE... KEEP ALL MATCHING GEOMETRIES.  
                
     """)
 
