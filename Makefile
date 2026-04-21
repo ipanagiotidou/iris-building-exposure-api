@@ -6,14 +6,16 @@ help:
 	@echo "  make install        - install Poetry dependencies"
 	@echo "  make db-up          - start PostGIS in Docker"
 	@echo "  make db-down        - stop Docker services"
-	@echo "  make db-reset       - stop Docker services and delete DB volume"
-	@echo "  make db-logs        - tail database logs"
-	@echo "  make db-ps          - show Docker service status"
-	@echo "  make compose-config - validate/render docker compose config"
+	@echo "  make db-down-v      - stop Docker services and delete DB volume"
 	@echo "  make init-db        - create database tables"
-	@echo "  make dev            - run FastAPI development server"
-	@echo "  make run            - alias for dev"
+	@echo "  make run            - start uvicorn
 	@echo "  make check          - start DB and initialize tables"
+
+
+# full pipeline
+all: init-db ingest-all create-indexes match run-final export-final
+
+install:
 
 # run the api locally 
 run:
@@ -32,9 +34,6 @@ restart: stop
 logs:
 	lsof -i :8000 || true
 
-# initialize tables 
-create-db-tables:
-	poetry run python -m scripts.init_db
 
 # start the db
 db-up:
@@ -48,9 +47,6 @@ db-down:
 db-down-v:
 	docker-compose down -v
 
-reset-db:
-	curl -X POST http://localhost:8000/buildings/admin/reset-db
-
 # ensure PostGIS exists
 enable-postgis:
 	docker exec -i building_exposure_db psql -U postgres -d building_exposure -c "CREATE EXTENSION IF NOT EXISTS postgis;"
@@ -63,13 +59,17 @@ init-db: enable-postgis
 ingest-all:
 	poetry run python -m scripts.run_ingest_all
 
+# after ingesting the data - before matching
+create-indexes:
+	poetry run python -m scripts.run_indexes
+
 match:
 	poetry run python -m scripts.run_match_osm_bag
 
 run-final:
 	poetry run python -m scripts.run_pipeline
 
-exxport-final:
+export-final:
 	poetry run python -m scripts.run_export
 
 exxport-bag:

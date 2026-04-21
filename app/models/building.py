@@ -52,7 +52,10 @@ class BuildingCanonicalBase(Base):
 
     # Geometry - related 
     footprint_area_m2: Mapped[float | None] = mapped_column(Float, nullable=True)
+    footprint_area_m2_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     floorspace_m2: Mapped[float | None] = mapped_column(Float, nullable=True)
+    floorspace_m2_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Core attributes 
     building_type: Mapped[str | None] = mapped_column(String(100), nullable=True) 
