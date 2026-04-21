@@ -56,27 +56,30 @@ class BuildingCanonicalBase(Base):
 
     # Core attributes 
     building_type: Mapped[str | None] = mapped_column(String(100), nullable=True) 
-    construction_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    occupancy_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    num_storeys: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    height_m: Mapped[float | None] = mapped_column(Float, nullable=True)
-    roof_shape: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    year_built: Mapped[str | None] = mapped_column(Integer, nullable=True)
-
-    # Provenance - Source - Origin 
     building_type_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    construction_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     construction_type_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    occupancy_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     occupancy_type_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    num_storeys: Mapped[int | None] = mapped_column(Integer, nullable=True)
     num_storeys_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    height_m: Mapped[float | None] = mapped_column(Float, nullable=True)
     height_m_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    roof_shape: Mapped[str | None] = mapped_column(String(100), nullable=True)
     roof_shape_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+    year_built: Mapped[str | None] = mapped_column(Integer, nullable=True)
     year_built_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    geometry_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
     # Later pipeline fields
-    is_matched: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
     match_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_matched: Mapped[bool] = mapped_column(Boolean, nullable=True, default=False)
     match_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     inference_method: Mapped[str | None] = mapped_column(String(255), nullable=True)
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -90,6 +93,7 @@ class BuildingCanonicalBase(Base):
     tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Geometry
+    geometry_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # NOT centroid: Mapped[object | None] = mapped_column(Geometry("POINT", srid=4326), nullable=True)
     geom: Mapped[object] = mapped_column(Geometry("MULTIPOLYGON", srid=4326), nullable=False)
 
