@@ -13,14 +13,14 @@ class BuildingMatch(Base):
     # What makes one raw OSM record unique
     # OSM SCHEMA: Osm_id is unique only within object type. (relation, way, node)
     __table_args__ = (
-        UniqueConstraint("osm_building_id", "bag_building_id", name= "uq_osm_id_bag_id"),
+        UniqueConstraint("osm_db_id", "bag_db_id", name= "uq_osm_id_bag_id"),
     )
 
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
-    osm_building_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    bag_building_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    osm_db_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    bag_db_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
 
 
     match_iou: Mapped[float | None] = mapped_column(Float, nullable=True)      # IoU (Intersection over Union) --> Overlap Quality

@@ -69,8 +69,13 @@ match:
 run-final-geom:
 	poetry run python -m scripts.run_pipeline
 
+run-derive-attr:
+	poetry run python -m ...
 
-epport-final:
+run-final-attr:
+	poetry run python -m ...
+
+exxport-final:
 	poetry run python -m scripts.run_export
 
 
