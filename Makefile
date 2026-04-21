@@ -66,9 +66,12 @@ ingest-all:
 match:
 	poetry run python -m scripts.run_match_osm_bag
 
-run-final:
+run-final-geom:
 	poetry run python -m scripts.run_pipeline
 
+
+epport-final:
+	poetry run python -m scripts.run_export
 
 
 

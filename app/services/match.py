@@ -31,16 +31,7 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
 
     """
     sql = text("""
-        INSERT INTO building_matches (
-            osm_building_id,
-            bag_building_id,
-            match_iou,
-            centroid_distance_m,
-            intersection_area_m2,
-            match_method,
-            match_status,
-            match_confidence
-        )
+               
         WITH candidates AS (
             SELECT
                 o.id AS osm_building_id,
@@ -73,33 +64,32 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
                 osm_area_m2,
                 bag_area_m2,
                 centroid_distance_m,
-                intersection_area_m2 / NULLIF((osm_area_m2 + bag_area_m2 - intersection_area_m2), 0) AS match_iou
+                intersection_area_m2 / NULLIF((osm_area_m2 + bag_area_m2 - intersection_area_m2), 0) AS match_iou,
+                (intersection_area_m2 / osm_area_m2) AS osm_coverage_ratio
             FROM scored1
         ),
         ranked AS (
             SELECT
                 *,
                 ROW_NUMBER() OVER (
-                    PARTITION BY osm_building_id
+                    PARTITION BY bag_building_id
                     ORDER BY match_iou DESC, centroid_distance_m ASC
                 ) AS rn
             FROM scored2
-            WHERE
-                intersection_area_m2 > 0
-                AND intersection_area_m2 / NULLIF((osm_area_m2 + bag_area_m2 - intersection_area_m2), 0) >= 0.5
-                AND centroid_distance_m <= 20
+            WHERE osm_coverage_ratio > 0.6 -- AND intersection_area_m2 > 0 AND match_iou >= 0.5 AND centroid_distance_m <= 20
+
         )
-        SELECT
-            osm_building_id,
+        SELECT 
             bag_building_id,
+            osm_building_id,
+            osm_coverage_ratio,
             match_iou,
             centroid_distance_m,
             intersection_area_m2,
-            'geometry_iou_centroid' AS match_method,
-            'accepted' AS match_status,
+            'geometry_cov_ratio_iou_centroid' AS match_method,
             match_iou AS match_confidence
         FROM ranked
-        WHERE rn = 1;  
+        WHERE rn = 1;
                
     """)
 
