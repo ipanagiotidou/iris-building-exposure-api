@@ -1,11 +1,14 @@
 from app.core.db import SessionLocal
-from app.services.finalize_buildings import populate_geometry_in_final_buildings_table
+from app.services.finalize_buildings import populate_final_geometry, resolve_attributes
 
 def main():
     db = SessionLocal()
     try:
-        inserted = populate_geometry_in_final_buildings_table(db, rebuild=True)
+        inserted = populate_final_geometry(db)
         print(f"Inserted {inserted} rows.")
+        attr_resolved = resolve_attributes(db)
+        print(f"Attributes resolved.")
+
     finally:
         db.close()
 

@@ -31,6 +31,7 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
 
     """
     sql = text("""
+        TRUNCATE table building_matches;
         INSERT INTO building_matches (
             bag_db_id,
             osm_db_id,
@@ -39,7 +40,8 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
             centroid_distance_m,
             intersection_area_m2,
             match_method,
-            match_confidence
+            match_confidence,
+            rn
         )
         WITH candidates AS (
             SELECT
@@ -96,7 +98,8 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
             centroid_distance_m,
             intersection_area_m2,
             'geometry_cov_ratio_iou_centroid' AS match_method,
-            match_iou AS match_confidence
+            match_iou AS match_confidence,
+            rn
         FROM ranked
         -- WHERE rn = 1;  -- DO NOT INCLUDE THIS LINE... KEEP ALL MATCHING GEOMETRIES.  
                
@@ -113,5 +116,4 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
     result = db.execute(sql)           # CursorResult Object: (db) connection execute returns a cursor (a structure that allows us to traverse a result)
     db.commit()
     return result.rowcount if result.rowcount is not None else 0
-
 

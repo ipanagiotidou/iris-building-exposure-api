@@ -78,5 +78,12 @@ run-final-attr:
 exxport-final:
 	poetry run python -m scripts.run_export
 
+exxport-bag:
+	poetry run python -m ........
+
+exxport-osm:
+	poetry run python -m ....
+
+
 
 

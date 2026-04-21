@@ -10,6 +10,7 @@ from app.core.db import Base
 class BuildingMatch(Base):
     __tablename__ = "building_matches"
 
+    
     # What makes one raw OSM record unique
     # OSM SCHEMA: Osm_id is unique only within object type. (relation, way, node)
     __table_args__ = (
@@ -37,10 +38,12 @@ class BuildingMatch(Base):
     # later for VALIDATION using OSM's ref:bag
     agrees_with_ref_bag: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
+    rn: Mapped[str | None] = mapped_column(Integer, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         nullable=False,
     )
 
-          
+

@@ -18,4 +18,4 @@ def run_match_osm_bag(db: Session):
 
     num_matched_buildings = match_osm_bag_buildings_with_postgis(db=db)
 
-    return {"number of matched buildings": num_matched_buildings}
+    return {"number of matched buildings ALL ": num_matched_buildings}
