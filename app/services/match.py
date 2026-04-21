@@ -31,7 +31,16 @@ def match_osm_bag_buildings_with_postgis(db: Session) -> int:
 
     """
     sql = text("""
-               
+        INSERT INTO building_matches (
+            osm_building_id,
+            bag_building_id,
+            match_iou,
+            centroid_distance_m,
+            intersection_area_m2,
+            match_method,
+            match_status,
+            match_confidence
+        )
         WITH candidates AS (
             SELECT
                 o.id AS osm_building_id,
