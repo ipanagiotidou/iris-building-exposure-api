@@ -5,7 +5,9 @@ description = ""
 authors = [
     {name = "ipanagiotidou",email = "ioannapanag@yahoo.com"}
 ]
-package-mode = false # DELETE IF NEEDED
+
+[tool.poetry]
+packages = [{ include = "app" }]
 
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
