@@ -68,5 +68,8 @@ export-osm:
 
 export-all: export-final export-bag export-osm
 
+preview-map:
+	poetry run python -m scripts.run_preview_map
+
 
 
