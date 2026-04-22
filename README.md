@@ -9,7 +9,7 @@ This project creates a building-level dataset by combining multiple open sources
 
 ## Architecture
 
-Fetching OSM + BAG<br>
+Fetching OSM + BAG+<br>
 ↓<br>
 Ingestion in PostGIS<br>
 ↓<br>
