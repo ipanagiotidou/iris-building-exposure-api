@@ -122,6 +122,7 @@ def resolve_attributes(db: Session) -> int:
     """
 
     sql = text("""
+
         UPDATE buildings f
         SET
             -- 1) BAG
@@ -178,7 +179,10 @@ def resolve_attributes(db: Session) -> int:
                 WHEN src.o_construction_type IS NOT NULL THEN 'osm'
                 WHEN src.b_construction_type IS NOT NULL THEN 'bag'
                 ELSE NULL
-            END
+            END,
+
+            -- OSM tags
+            tags_json = src.o_tags_json
 
         FROM (
             SELECT
@@ -203,7 +207,9 @@ def resolve_attributes(db: Session) -> int:
                 o.occupancy_type AS o_occupancy_type,
 
                 b.construction_type AS b_construction_type,
-                o.construction_type AS o_construction_type
+                o.construction_type AS o_construction_type,
+
+                o.tags_json AS o_tags_json
 
             FROM buildings f2
             LEFT JOIN bag_buildings_canonical b
