@@ -3,7 +3,7 @@
 all: init-db ingest-all create-indexes match run-final export-all 
 
 install:
-	poetry install 
+	poetry install --no-root
 
 # run the api locally 
 run:
