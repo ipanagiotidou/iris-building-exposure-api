@@ -6,7 +6,6 @@ authors = [
     {name = "ipanagiotidou",email = "ioannapanag@yahoo.com"}
 ]
 
-[tool.poetry]
 packages = [{ include = "app" }]
 
 readme = "README.md"
