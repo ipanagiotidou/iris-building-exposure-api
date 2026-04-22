@@ -38,7 +38,7 @@ def ingest_raw_osm_buildings(raw_osm_gdf: GeoDataFrame, db: Session) -> int:
 
     inserted = 0 
 
-    # GOAL: Build a fast lookup set of all existing unique (element, osm_id) pairs already in the database.
+    # GOAL: fast lookup set of all existing unique (element, osm_id) pairs already in the database.
     # FLOW: the db starts emtpy and I am building the set of keys as I go. 
     # db.query builds an SQL query, equivalent to "SELECT element, osm_id FROM osm_buildings_raw;"
     # OSMBuildingRaw.element, OSMBuildingRaw.osm_i  ... are COLUMN REFERENCES ! 

@@ -45,14 +45,6 @@ class OSMBuildingRaw(Base):
         - canonical
         - heavily interpreted
 
-    Logic for defining the raw table schema DATA TYPES:
-        Core OSM fields like osm_id, element, and geom have a well-defined structure, 
-        so they can be strictly typed in your database schema. 
-        However, OSM tags are inherently flexible and stored as free-form key-value pairs, 
-        where values are not consistently typed (even when they represent numbers or booleans). 
-        For this reason, it’s best to store tags as strings (or JSONB) during ingestion and only 
-        cast selected fields to strict types during a later normalization step.
-
     """
     
     __tablename__ = "osm_buildings_raw"

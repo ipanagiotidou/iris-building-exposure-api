@@ -11,17 +11,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.db import Base
 
-""" 
-Mapped: A type annotation that indicates a mapped column in a SQLAlchemy ORM model.
-mapped_column: A function used to define a column in a SQLAlchemy ORM model, specifying its type and other attributes.
 
-This structure, known as a Declarative Mapping, defines at once both a Python object model, 
-as well as database metadata that describes real SQL tables that exist, 
-or will exist, in a particular database:
-
-In SQLAlchemy’s declarative style, each MAPPED CLASS represents a table definition plus the Python object model for rows in that table
-
-"""
 
 """ 
 GENERAL THINGS:
