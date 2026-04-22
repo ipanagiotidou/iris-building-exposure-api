@@ -18,8 +18,8 @@ venv/
 # OS
 .DS_Store
 
-# Env variables
-.env
+# # Env variables
+# .env
 
 # Data (important for me)
 data/
