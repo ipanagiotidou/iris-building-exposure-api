@@ -52,7 +52,6 @@ git clone https://github.com/ipanagiotidou/iris-building-exposure-api.git
 cd iris-building-exposure-api
 make install
 make db-up
-make init-db
 make all
 ```
 
