@@ -1,21 +1,9 @@
 
-.PHONY: run stop restart logs
-
-help:
-	@echo "Available commands:"
-	@echo "  make install        - install Poetry dependencies"
-	@echo "  make db-up          - start PostGIS in Docker"
-	@echo "  make db-down        - stop Docker services"
-	@echo "  make db-down-v      - stop Docker services and delete DB volume"
-	@echo "  make init-db        - create database tables"
-	@echo "  make run            - start uvicorn
-	@echo "  make check          - start DB and initialize tables"
-
-
 # full pipeline
 all: init-db ingest-all create-indexes match run-final export-final
 
 install:
+	poetry install 
 
 # run the api locally 
 run:
@@ -72,11 +60,11 @@ run-final:
 export-final:
 	poetry run python -m scripts.run_export
 
-exxport-bag:
-	poetry run python -m ........
+export-bag:
+	poetry run python -m scripts.run_export_bag
 
-exxport-osm:
-	poetry run python -m ....
+export-osm:
+	poetry run python -m scripts.run_export_osm
 
 
 

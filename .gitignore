@@ -4,6 +4,8 @@ __pycache__/
 *.pyo
 *.pyd
 
+
+
 # Virtual env
 .venv/
 env/
@@ -19,7 +21,7 @@ venv/
 # Env variables
 .env
 
-# Data (important for you)
+# Data (important for me)
 data/
 *.gpkg
 *.geojson
@@ -30,6 +32,8 @@ data/
 
 # Docker
 pgdata/
+/docker
+
 
 # HTML
 *.html

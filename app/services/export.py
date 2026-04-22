@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 
+
 def export_final_buildings_to_geojson(
     engine: Engine,
     output_path: str = "outputs/final_buildings.geojson",
@@ -60,4 +61,71 @@ def export_final_buildings_to_geojson(
     return output
 
 
+def export_raw_osm_buildings(
+    engine: Engine,
+    output_path: str = "outputs/osm_buildings.geojson",
+) -> Path:
+    
+    """
+    Export the initial OSM table to a GeoJSON file.
 
+    Args:
+        engine: SQLAlchemy engine
+        output_path: path to the output GeoJSON file
+
+    Returns:
+        Path to the written GeoJSON file
+    """
+
+    sql = text("""
+        SELECT 
+               *           
+        FROM osm_buildings_raw
+    """)
+
+    gdf = gpd.read_postgis(sql, engine, geom_col="geom")
+   
+    if gdf.crs is None:
+        gdf = gdf.set_crs("EPSG:4326")
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    gdf.to_file(output, driver="GeoJSON")
+    return output
+
+
+
+
+def export_raw_bag_buildings(   
+        engine: Engine,
+        output_path: str = "outputs/bag_buildings.geojson",
+) -> Path:
+    
+    """
+    Export the initial BAG table to a GeoJSON file.
+
+    Args:
+        engine: SQLAlchemy engine
+        output_path: path to the output GeoJSON file
+
+    Returns:
+        Path to the written GeoJSON file
+    """
+
+    sql = text("""
+        SELECT 
+               *           
+        FROM bag_buildings_raw
+    """)
+
+    gdf = gpd.read_postgis(sql, engine, geom_col="geom")
+   
+    if gdf.crs is None:
+        gdf = gdf.set_crs("EPSG:4326")
+
+    output = Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    gdf.to_file(output, driver="GeoJSON")
+    return output
