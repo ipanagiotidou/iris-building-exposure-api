@@ -234,3 +234,55 @@ def resolve_attributes(db: Session) -> int:
     except Exception:
         db.rollback()
         raise
+
+
+
+
+
+def derive_footprint_area(db: Session) -> None:
+    sql = text("""
+        UPDATE buildings
+        SET
+            footprint_area_m2 = ST_Area(ST_Transform(geom, 28992)),
+            footprint_area_m2_source = 'derived_from_final_geometry'
+        WHERE geom IS NOT NULL;
+    """)
+    db.execute(sql)
+    db.commit()
+
+
+def derive_floorspace(db: Session) -> None:
+    sql = text("""
+        UPDATE buildings
+        SET
+            floorspace_m2 = footprint_area_m2 * num_storeys,
+            floorspace_m2_source = 'derived_from_footprint_area_x_num_storeys',
+            inference_method = COALESCE(inference_method, 'rule_based')
+        WHERE
+            floorspace_m2 IS NULL
+            AND footprint_area_m2 IS NOT NULL
+            AND num_storeys IS NOT NULL;
+    """)
+    db.execute(sql)
+    db.commit()
+
+
+def derive_height_from_storeys(db: Session) -> None:
+    sql = text("""
+        UPDATE buildings
+        SET
+            height_m = num_storeys * 3.0,
+            height_m_source = 'derived_from_num_storeys',
+            inference_method = COALESCE(inference_method, 'rule_based')
+        WHERE
+            height_m IS NULL
+            AND num_storeys IS NOT NULL;
+    """)
+    db.execute(sql)
+    db.commit()
+
+
+def derive_missing_attributes(db: Session) -> None:
+    derive_footprint_area(db)
+    derive_floorspace(db)
+    derive_height_from_storeys(db)

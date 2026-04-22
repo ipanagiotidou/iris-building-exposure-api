@@ -1,6 +1,6 @@
 
 # full pipeline
-all: init-db ingest-all create-indexes match run-final export-final
+all: init-db ingest-all create-indexes match run-final export-all 
 
 install:
 	poetry install 
@@ -66,6 +66,7 @@ export-bag:
 export-osm:
 	poetry run python -m scripts.run_export_osm
 
+export-all: export-final export-bag export-osm
 
 
 

@@ -1,0 +1,4 @@
+This dataset includes data derived from OpenStreetMap.
+
+© OpenStreetMap contributors
+https://www.openstreetmap.org/copyright
