@@ -26,7 +26,14 @@ def populate_final_geometry(db: Session) -> int:
             geom
         )
 
-        WITH accepted_matches AS (
+        WITH all_accepted_matches AS (
+            SELECT
+                m.osm_db_id,
+                m.bag_db_id
+            FROM building_matches m
+        ),
+
+        best_matches AS (
             SELECT
                 m.osm_db_id,
                 m.bag_db_id
@@ -44,21 +51,22 @@ def populate_final_geometry(db: Session) -> int:
             FROM osm_buildings_canonical o
             WHERE NOT EXISTS (
                 SELECT 1
-                FROM accepted_matches am
+                FROM all_accepted_matches am
                 WHERE am.osm_db_id = o.id
             )
         ),
 
+        -- all bag records -- bring the geometry -- and bring the match_id --> from best
         all_bag_records AS (
             SELECT
                 'bag' AS source_dataset,
                 b.source_record_id AS source_record_id,
                 'bag' AS geometry_source,
-                am.osm_db_id AS match_id,
+                bm.osm_db_id AS match_id,
                 b.geom AS geom
             FROM bag_buildings_canonical b
-            LEFT JOIN accepted_matches am
-            ON am.bag_db_id = b.id
+            LEFT JOIN best_matches bm
+            ON bm.bag_db_id = b.id
         )
 
 
