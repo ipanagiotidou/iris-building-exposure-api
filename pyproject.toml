@@ -1,5 +1,5 @@
 [project]
-name = "iris-building-exposure-api"
+name = "iris-building-exposure-api" # Because the project name contains hyphens, Poetry converts it to the conventional Python package name: iris_building_exposure_api
 version = "0.1.0"
 description = ""
 authors = [
@@ -41,4 +41,10 @@ black = "^26.3.1"
 mypy = "^1.20.1"
 pytest = "^9.0.3"
 ipykernel = "^7.2.0"
+
+[tool.poetry]
+packages = [
+    { include = "app" }
+]
+
 
