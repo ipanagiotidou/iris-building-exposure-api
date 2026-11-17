@@ -36,3 +36,15 @@ pgdata/
 # The Assignment - Confidential 
 Technical Assignment A.pdf
 
+# Test scripts
+scripts/
+
+# Python tests
+tests/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Pytest cache
+.pytest_cache/
