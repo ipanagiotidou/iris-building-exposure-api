@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine   # Create a database connection. 
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import settings # access the settings object from the config module to get the database URL and other configuration values.
@@ -10,6 +10,7 @@ engine = create_engine(settings.database_url, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
+# declarative base class provided by SQLAlchemy.
 class Base(DeclarativeBase):
     pass
 
