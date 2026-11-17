@@ -3,11 +3,17 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
+
+# Pytest cache
+.pytest_cache/
 
 # Virtual env
 .venv/
 env/
 venv/
+.env   # ? 
+
 
 # Jupyter / VSCode
 .ipynb_checkpoints/
@@ -41,10 +47,3 @@ scripts/
 
 # Python tests
 tests/
-
-# Python cache
-__pycache__/
-*.py[cod]
-
-# Pytest cache
-.pytest_cache/
