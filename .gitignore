@@ -4,8 +4,6 @@ __pycache__/
 *.pyo
 *.pyd
 
-
-
 # Virtual env
 .venv/
 env/
@@ -19,7 +17,9 @@ venv/
 .DS_Store
 
 # # Env variables
-# .env
+.env
+.env.*
+!.env.example
 
 # Data (important for me)
 data/
@@ -32,4 +32,7 @@ data/
 # Docker
 pgdata/
 /docker
+
+# The Assignment - Confidential 
+Technical Assignment A.pdf
 

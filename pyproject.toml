@@ -6,6 +6,12 @@ authors = [
     {name = "ipanagiotidou",email = "ioannapanag@yahoo.com"}
 ]
 
+# So that Poetry looks for this Python package name: app
+[tool.poetry]
+packages = [
+    { include = "app" }
+]
+
 
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
@@ -42,9 +48,6 @@ mypy = "^1.20.1"
 pytest = "^9.0.3"
 ipykernel = "^7.2.0"
 
-[tool.poetry]
-packages = [
-    { include = "app" }
-]
+
 
 

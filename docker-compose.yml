@@ -4,16 +4,19 @@ services:
     container_name: building_exposure_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: building_exposure
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      # 5433 on the host, 5432 inside the container
-      - "127.0.0.1:5433:5432"  # the container still listens on Postgres port 5432 internally, but your machine connects through 5433.
+      # exposes the database on port 5433 on the HOST (WSL machine). Inside DOCKER, PostgreSQL uses 5432. 
+      # we use localhost:5433, because Uvicorn runs outside Docker. (with poetry)
+      #       --> If your API later moves into Docker, the database hostname will change to the Compose service name (db) and the port to 5432.
+      # For now, the container still listens on Postgres port 5432 internally, but your machine connects through 5433.
+      - "127.0.0.1:5433:5432"  
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./docker/db/init:/docker-entrypoint-initdb.d
-    healthcheck:
+      - pgdata:/var/lib/postgresql/data                  # persists database data, even if the container is stopped or recreated.
+      - ./docker/db/init:/docker-entrypoint-initdb.d     # command: lets you run SQL initialisation scripts when the database is first created.
+    healthcheck:                                         # checks whether PostgreSQL is ready to accept connections.
       test: ["CMD-SHELL", "pg_isready -U postgres -d building_exposure"]
       interval: 10s
       timeout: 5s
