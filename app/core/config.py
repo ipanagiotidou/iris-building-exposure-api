@@ -42,7 +42,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    @property
+    @property   # This decorator allows you to access this method as if it were an attribute, without needing to call it like a regular method.
     def database_url(self) -> URL:
         """Construct the database URL from the individual components."""
         return str(
