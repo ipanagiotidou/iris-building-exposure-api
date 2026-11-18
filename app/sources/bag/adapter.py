@@ -1,5 +1,4 @@
 # URL opening 
-from urllib.parse import urlencode
 import requests
 
 # # CACHING
@@ -12,28 +11,191 @@ from app.schemas.bounding_box import BoundingBox
 from app.sources.base import BaseBuildingAdapter
 
 
-# LOGGING - instead of print - it gives ability to control the verbosity 
+# LOGGING 
 import logging
-logging.basicConfig(level=logging.WARNING) # logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # module's name 
 
 
 class BAGBuildingAdapter(BaseBuildingAdapter):
-    
+    """
+    seperation of concerns when writing this function. 
 
+    Function's RESPONSIBILITIES:
+    1) constructs the URL and sends a request
+    2) retrieves data from BAG 
+    3) constructs the next_url if any to handle PAGINATION 
+    3)  gathers all features
+    4) checks if the features are empty or full
+    5) filters out invalid geometries and keeps only polygon-like geometries 
+    6) 
+
+    """
+
+    # move outside the BAG adapter
+    def _validate_geometries(self, gdf: gpd.GeoDataFrame) ->  gpd.GeoDataFrame:
+        """
+        Remove missing, empty and invalid geometries.
+        """
+
+        # Check geometry conditions - All 3 must be true 
+        valid = (
+            gdf.geometry.notna()       # 	Geometry actually exists
+            & ~gdf.geometry.is_empty   #    Geometry isn't empty
+            & gdf.geometry.is_valid    #    Geometry is topologically valid
+        )
+
+        # Count invalid records 
+        invalid_count = (~valid).sum()
+
+        logger.info("Total geometries: %s", len(gdf))
+        logger.info("Valid geometries: %s", valid.sum())
+
+        if invalid_count > 0:
+            logger.warning(
+                "Found %s missing, empty or invalid geometries",
+                invalid_count,
+            )
+
+        # Keep only valid geometries 
+        # Use copy cause we are creating a filtered GeoDataFrame. We intend to modify it further later. 
+        validated_gdf = gdf.loc[valid].copy()
+
+        return validated_gdf
+
+         
+
+    # move outside the BAG adapter
+    def _filter_geometry_types(
+        self,
+        gdf: gpd.GeoDataFrame,
+    ) -> gpd.GeoDataFrame:
+        """
+        Keep only Polygon and MultiPolygon geometries.
+        """
+
+        allowed_types = ["Polygon", "MultiPolygon"]
+
+        # Identify allowed geometry types
+        mask = gdf.geometry.geom_type.isin(allowed_types)
+
+        # Count removed records
+        removed_count = (~mask).sum()
+
+        logger.info("Geometry types before filtering:\n%s",
+                    gdf.geometry.geom_type.value_counts())
+
+        if removed_count > 0:
+            logger.info("Removing %s unsupported geometry types", removed_count)
+
+        # Filter GeoDataFrame
+        filtered_gdf = gdf.loc[mask].copy()
+
+        logger.info("Records remaining after filtering: %s", len(filtered_gdf))
+
+        return filtered_gdf
+
+
+    # If I move this, remember it turns a list[dict] into GeoDataFrame
+    def _to_gdf(self, features: list[dict], crs: str) -> gpd.GeoDataFrame:    
+        """Raw GeoJSON features → spatial data    """
+        gdf = gpd.GeoDataFrame.from_features(features, crs= crs)
+        return gdf 
+
+    def _find_next_url_page(self, data: dict) -> str | None:
+        """
+        Responsibility: 
+        Find next page URL or return None if there isn't one. 
+        """
+
+        # OGC APIs use links to support navigation between resources. Each link describes a relationship to another resource.
+        # 'rel' Relationship of the link to the current resource
+        #       - 'self' means: this is the URL of the resource you are currently looking at.
+        #       - 'alternate' means PDOK offers the same resource in another representation.
+        # The href specifies the link's destination. HyperLink = Actual URL of the resource. 
+        # If I find a relationship being 'next' and there is a hyperlink value, then break the loop --> this is the next url 
+        
+        for link in data.get("links", []):  # "links" is the key, the method returns [] instead of None if there is no value 
+            if link.get("rel") == "next" and link.get("href"):
+                next_url = link["href"]
+                return next_url
+        
+        return None 
+
+        
+
+
+    def _fetch_features(
+            self, 
+            url: str, 
+            params: dict, 
+            timeout: int = 30,
+    ) -> list[dict]:
+        """
+        Retrieve all the raw features from the BAG API, following pagination until there are no more pages.
+        """
+
+
+        all_features = []                 # Define an empty list to save the features from multiple pages 
+        
+        next_url = url
+        next_params = params
+        page = 1
+
+        while next_url:    # break if I want to break the loop
+            logger.debug("Requesting BAG page %s", page)
+
+            response = requests.get(next_url, params=next_params, timeout = timeout)  # GET request from API 
+            response.raise_for_status()                            # check if response [200] or if any error occurred and raise an HTTPError.
+
+            data = response.json() # data is a dict that contains a FeatureCollection
+
+            logger.debug("Response type: %s", type(data))  # data is a dict 
+            logger.debug("Response keys: %s", data.keys()) # dict_keys(['type', 'timeStamp', 'links', 'features', 'numberReturned'])  
+
+            features = data.get("features", [])   # returns [] instead of None as a Value if the Key doesn't exist in Dictionary.
+            
+            logger.info("Features received: %s", len(features))
+
+            # Add the features in the Features List. The extend() method adds the specified list elements to the end of the current list.
+            all_features.extend(features)  
+
+            logger.info("BAG page %s: received %s features", page, len(features))
+
+            
+            # Paginate
+            next_url = self._find_next_url_page(data)     # Next request following the server-provided next link directly. 
+            next_params = None                            # The next link already contains its query parameters, thus next_params = None. 
+            page += 1
+                          
+
+        return all_features 
+    
+    
     def fetch_buildings(
             self, 
             bbox: BoundingBox,        # bbox is mandatory because the AOI comes from the API request.
-            limit: int = 100,         # limit and timeout are technical parameters, not necessarily things the end user needs to control.
-            timeout: int = 30,   
-            ) -> gpd.geodataframe:
+            ) -> gpd.GeoDataFrame:
 
         """
+        MAIN PUBLIC METHOD. 
+
+        Retrieve building footprints from the BAG API for a given area of interest and return them as a validated GeoDataFrame.
+
+        PDOK provides the BAG through an OGC API – Features.
+
+        OGC API is a REST-based API standard that allows applications to retrieve geographic objects (features), including:
+            - Geometry (building footprints, points, polygons).
+            - Attributes (building identifiers, construction year, status, etc.).
+            - Spatial filtering (e.g. bounding boxes).
+            - Pagination (retrieving results in multiple pages).
+
         Fetch all BAG pand features for a bbox from the PDOK/Kadaster OGC API
         by following pagination links, and return them as a GeoDataFrame.
 
         The first URL request should be:
         https://api.pdok.nl/kadaster/bag/ogc/v2/collections/pand/items?f=json&bbox=4.355,52.000,4.380,52.020&limit=100
+
+        In the link you can see: ogc/v2	OGC API version
 
 
         Parameters
@@ -50,83 +212,52 @@ class BAGBuildingAdapter(BaseBuildingAdapter):
         geopandas.GeoDataFrame
         """
 
-        # output_path = f"{RAW_DATA_DIR}/{bbox.to_filename_path()}.tif"
-        # saved_path = download_dem(session, url, output_path=output_path)
+        logger.info("Starting BAG data retrieval")
 
-        all_features: list[dict] = []
 
-        # params for the URL construction
+        # 1. Prepare request parameters 
         params = {
             "bbox": bbox.as_ogc_bbox,
-            "f": "json",
-            "limit": limit,        
-        }
-
-        # Initialize the first request URL & params
-        next_url = settings.pdok_bag_buildings_base_url   # e.g. 'https://api.pdok.nl/kadaster/bag/ogc/v2/collections/pand/items?bbox=32.0%2C31.0%2C33.0%2C32.0&f=json&limit=1'
-        next_params = params
+            "f": "json",       
+        }   # params for the URL construction
 
 
-        while next_url:
-            response = requests.get(next_url, params=next_params, timeout=timeout)  # GET request from API 
-            response.raise_for_status()                                             # check if response [200] or if any error occurred and raise an HTTPError.
+        url = settings.pdok_bag_buildings_base_url   
 
-            data = response.json() 
+  
+        # 2. Retrieve all raw features 
+        features = self._fetch_features(url = url, params = params, timeout=30)
 
-            logger.info("Response type: %s", type(data))
-            logger.info("Response keys: %s", data.keys)
+        # 3. Handle empty response & Return an empty GeoDataFrame 
+        if not features:
+            logger.info("No BAG features found for this Bounding Box.")
 
-            break # to inspect only the first one
-     
+            return gpd.GeoDataFrame(
+                geometry=gpd.GeoSeries([], crs= "EPSG:4326"),
+                crs="EPSG:4326",
+            )
 
-        #     features = data.get("features", [])
-        #     all_features.extend(features)
+        # 4. Convert to GeoDataFrame 
+        gdf = self._to_gdf(features, crs= "EPSG:4326")
 
-        #     # After the first request, follow the server-provided next link directly
-        #     next_url = None
-        #     next_params = None
+        # 5. Validate Geometries 
+        gdf = self._validate_geometries(gdf)
 
-        #     for link in data.get("links", []):
-        #         if link.get("rel") == "next" and link.get("href"):
-        #             next_url = link["href"]
-        #             break
-        
-        # # if empty return an empty gdf
-        # if not all_features:
-        #     return gpd.GeoDataFrame(geometry=[], crs="EPSG:4326")
-
-        # # Create the GeoDataFrame 
-        # # ENSURE CRS IS SET TO WGS84 (EPSG:4326):
-        # gdf = gpd.GeoDataFrame.from_features(all_features, crs="EPSG:4326")
-
-        # # VALIDITY CHECKS FOR GEOMETRIES:
-        # logger.warning(f"Valid geometries before filtering: {gdf.geometry.is_valid.sum()}")
-        # # is_valid returns a Boolean list with True and False values. Sum only takes into account the True values. 
-        # logger.warning(f"Invalid geometries before filtering: {gdf.geometry.is_valid.count() - gdf.geometry.is_valid.sum()}")
-        
-        # # TO DO...
-        # # FILTER OUT INVALID GEOMETRIES:
-        # # In this case, there are no invalid geometries, so this step is not necessary, but in general it is a good practice to filter out invalid geometries before ingesting into the database, to avoid issues with spatial queries and analyses later on. 
-        # gdf = gdf[gdf.geometry.is_valid].copy()
+        # 6. Keep building footprint geometry types 
+        gdf = self._filter_geometry_types(gdf)
 
 
-        # # KEEP ONLY POLYGON-LIKE BUILDING GEOMETRIES:
-        # # check the number of records and geometry types before and after filtering:
-        # logger.warning(f"Number of records before filtering: {len(gdf)}")
-        # logger.warning(f"Geometry types before filtering:\n{gdf.geometry.geom_type.value_counts(dropna=False)}")
-
-        # # Keep only polygon-like building geometries
-        # gdf = gdf[gdf.geometry.geom_type.isin(["Polygon", "MultiPolygon"])].copy()
-
-        # logger.warning(f"Number of records after filtering: {len(gdf)}")
-        # logger.warning(f"Geometry types after filtering:\n{gdf.geometry.geom_type.value_counts(dropna=False)}")
+        # 7. Prepare final result - Reset index after filtering
+        gdf = gdf.reset_index(drop=True)
 
 
-        # # reset index after filtering
-        # gdf = gdf.reset_index(drop=True)
+        logger.info(
+            "BAG retrieval completed: %s buildings returned",
+            len(gdf),
+        )
 
-        # Empty
-        gdf = gpd.GeoDataFrame(columns=['id', 'distance', 'feature'], geometry='feature')
+        logger.debug("GeoDataFrame preview:\n%s", gdf.head())
+
         return gdf
         
 

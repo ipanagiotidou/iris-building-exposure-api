@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field, model_validator  # Using Type Hints for Data validation & Serialization
-
+from pydantic import BaseModel, model_validator  # Using Type Hints for Data validation & Serialization
 
 # all Pydantic models inherit from BaseModel
 class BoundingBox(BaseModel):
@@ -9,7 +8,6 @@ class BoundingBox(BaseModel):
     south: float 
     east: float 
     north: float
-
 
     # VALIDATION: ensures coords make sense
     @model_validator(mode= "after")    # After validators: run after the whole model (BaseModel) has been validated. After Pydantic's internal parsing.
