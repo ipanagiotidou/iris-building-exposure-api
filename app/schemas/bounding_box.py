@@ -36,7 +36,7 @@ class BoundingBox(BaseModel):
         return self 
 
 
-    # STANDARDIZATION: Gives one consistent representation of a bounding box as expected by an OGC API. 
+    # STANDARDIZATION: Gives one consistent representation of a bounding box as expected by an OGC API. --> "minx,miny,maxx,maxy" 
     @property
     def as_ogc_bbox(self) -> str:            
         return f"{self.west},{self.south},{self.east},{self.north}"
