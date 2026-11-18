@@ -1,86 +1,59 @@
-
-from typing import Any, Dict, Optional, List, Union
-from pydantic import BaseModel, Field, model_validator  # BaseModel for data validation. enables validation & serialization
+from pydantic import BaseModel, Field, model_validator  # Using Type Hints for Data validation & Serialization
 
 
+# all Pydantic models inherit from BaseModel
 class BBox(BaseModel):
     # Validation happens before the service runs.
 
-    # bbox can be a string (with the coordinates) or None
-    bbox: str | None = Field(
-        default=None, 
-        description="minx,miny,maxx,maxy (lon/lat, EPSG:4326)")   
-
-    west: float | None = Field(default=None, description= "min lon", exclude=True) 
-    south: float | None = Field(default=None, description= "min lat", exclude=True)
-    east: float | None = Field(default=None, description= "max lon", exclude=True)
-    north: float | None = Field(default=None, description= "max lat", exclude=True) 
+    west: float 
+    south: float 
+    east: float 
+    north: float
 
 
-    @model_validator(mode= "after")
-    def parse_and_validate_bbox(self):
+    # Validation: ensures coords make sense
+    @model_validator(mode= "after")    # After validators: run after the whole model (BaseModel) has been validated. After Pydantic's internal parsing.
+    def validate_coords(self):         
 
-        # Case 1: bbox string provided
-        
-        if self.bbox is not None:
-            parts = [p.strip() for p in self.bbox.split(",")]  # a list of strings  
-            if len(parts) != 4:
-                raise ValueError("bbox must be 'minx, miny, maxx, maxy'")
-            
-            try:
-                west, south, east, north = (float(x) for x in parts)  # assign tuple in vars
-            except ValueError:
-                raise ValueError("bbox values must be numbers")
-        
-        # Case 2: explicit coordinates provided
-        elif None not in (self.west, self.south, self.east, self.north):
-            west, south, east, north = self.west, self.south, self.east, self.north
+        if self.west >= self.east : 
+            raise ValueError("West must be smaller than east.")
 
-        # Case 3: Neither form provided
-        else:
-            raise ValueError(
-                "Provide either bbox='minx,miny,maxx,maxy' or all four coordinates: "
-                "west, south, east, north"
-            )
-        
-        # Validation
-        if west >= east:
-            raise ValueError("west must be < east")
-        if  south >=  north:
-            raise ValueError("south must be < north")
-        
-        for lon in (west, east):
-            if not (-180 <= lon <= 180):
-                raise ValueError("Invalid longitude")
+        if self.south >= self.north: 
+            raise ValueError("South must be smaller than north.")
 
-        for lat in (south, north):
-            if not (-90 <= lat <= 90):
-                raise ValueError("Invalid latitude")
-        
-        # Normalize internal state
-        self.west = west
-        self.south = south
-        self.east = east
-        self.north = north
+        if not (-180 < self.west < 180):
+            raise ValueError("Invalid longitude.")
+
+        if not (-180 < self.east < 180):
+            raise ValueError("Invalid longitude.")
+
+        if not (-90 < self.north < 90):
+            raise ValueError("Invalid latitude.")
+
+        if not (-90 < self.south < 90):
+            raise ValueError("Invalid latitude.")
+
+        return self 
+
+
+    # Standardisation: Gives one consistent representation of a bounding box.
+    @property
+    def bbox(self) -> str:            
+        return f"{self.west},{self.south},{self.east},{self.north}"
+
     
-        # Normalize bbox string consistently
-        self.bbox = f"{west},{south},{east},{north}"
 
 
-        return self
-    
-    def to_list(self) -> list[float]:
-        return [self.west, self.south, self.east, self.north]  
+
+        
 
 
-    def to_dict(self) -> dict[str, float]:
-        return {
-            "west": self.west,
-            "south": self.south,
-            "east": self.east,
-            "north": self.north,
-            }
-    
-    def key(self) -> str:
-        return f"{self.west:.6f}, {self.south: .6f}, {self.east:.6f}, {self.north:.6f}"
-    
+
+        
+
+
+
+
+
+
+
