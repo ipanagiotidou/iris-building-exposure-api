@@ -18,6 +18,13 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
+
+bbox = BBox(west=4.32, south=23.0, east=34.5, north=45)
+print(bbox)
+print(bbox.bbox)
+
+
+
 class BAGBuildingAdapter(BaseBuildingAdapter):
     pass
 
@@ -127,7 +134,7 @@ def fetch_bag_buildings_gdf(
     # gdf = gdf.reset_index(drop=True)
 
 
-    return gdf
+    return 1 # gdf
     
 
 

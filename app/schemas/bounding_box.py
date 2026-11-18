@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator  # Using Type Hints for D
 
 
 # all Pydantic models inherit from BaseModel
-class BBox(BaseModel):
+class BoundingBox(BaseModel):
     # Validation happens before the service runs.
 
     west: float 
@@ -11,7 +11,7 @@ class BBox(BaseModel):
     north: float
 
 
-    # Validation: ensures coords make sense
+    # VALIDATION: ensures coords make sense
     @model_validator(mode= "after")    # After validators: run after the whole model (BaseModel) has been validated. After Pydantic's internal parsing.
     def validate_coords(self):         
 
@@ -36,9 +36,9 @@ class BBox(BaseModel):
         return self 
 
 
-    # Standardisation: Gives one consistent representation of a bounding box.
+    # STANDARDIZATION: Gives one consistent representation of a bounding box as expected by an OGC API. 
     @property
-    def bbox(self) -> str:            
+    def as_ogc_bbox(self) -> str:            
         return f"{self.west},{self.south},{self.east},{self.north}"
 
     
