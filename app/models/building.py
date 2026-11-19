@@ -104,6 +104,8 @@ class Building(Base):
 
 # Its purpose is to preserve every original source record associated with a canonical building, without duplicating the canonical building itself.
 # registered with SQLAlchemy's Base.metadata when the module is imported.
+# Relationship 1 Canonical Record -> Many Source Records 
+
 class BuildingSourceRecord(Base):
     __tablename__ = "building_source_records"
 
@@ -119,6 +121,7 @@ class BuildingSourceRecord(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
+    # FOREIGN KEY TO CANONICAL TABLE 
     # Link to canonical building - This attribute is a foreign key that refers to the primary key of the canonical building table.
     building_id: Mapped[int] = mapped_column(
         ForeignKey("buildings.id"),   

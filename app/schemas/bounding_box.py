@@ -39,6 +39,10 @@ class BoundingBox(BaseModel):
     def as_ogc_bbox(self) -> str:            
         return f"{self.west},{self.south},{self.east},{self.north}"
 
+    @property
+    def as_ogc_bbox_tuple(self) -> str:            
+        return (self.west, self.south, self.east , self.north)
+
     
 
 

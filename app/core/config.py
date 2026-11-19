@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -26,8 +25,8 @@ class Settings(BaseSettings):
     opentopography_api_key: str | None = None
 
     # Storage 
-    raw_data_dir: Path = Path("data/raw")       # Path('/'): Creates a Path object pointing to root directory 
-    output_data_dir: Path = Path("data/output")
+    raw_data_dir: Path = Path("outputs")       # Path('/'): Creates a Path object pointing to root directory 
+    output_data_dir: Path = Path("outputs/")
 
     # Cache 
     cache_name: str 

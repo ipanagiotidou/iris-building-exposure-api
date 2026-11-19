@@ -8,7 +8,7 @@ from shapely.geometry import Polygon
 
 import logging
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.WARNING) 
 logger = logging.getLogger(__name__)
 
 
