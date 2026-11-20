@@ -5,7 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship  # orm = object-r
 from sqlalchemy.dialects.postgresql import JSONB
 from geoalchemy2 import Geometry
 
-from app.core.db import Base
+from app.core.db.db import Base
 
 """ 
 EXPLAIN Mapped + mapped_column:

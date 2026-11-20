@@ -19,7 +19,7 @@ from geopandas import GeoDataFrame
 from sqlalchemy.orm import Session
 from geoalchemy2.shape import from_shape
 
-from app.core.db import Base
+from app.core.db.db import Base
 
 from app.models.building import Building
 from app.models.source_building import OSMBuildingRaw, BAGBuildingRaw

@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.schemas.bounding_box import BoundingBox
 from app.sources.base import BaseBuildingAdapter
 
+from app.modules.geometry.validation import _validate_geometries, _filter_geometry_types
+
 
 # LOGGING 
 import logging
@@ -30,69 +32,6 @@ class BAGBuildingAdapter(BaseBuildingAdapter):
     6) 
 
     """
-
-    # move outside the BAG adapter
-    def _validate_geometries(self, gdf: gpd.GeoDataFrame) ->  gpd.GeoDataFrame:
-        """
-        Remove missing, empty and invalid geometries.
-        """
-
-        # Check geometry conditions - All 3 must be true 
-        valid = (
-            gdf.geometry.notna()       # 	Geometry actually exists
-            & ~gdf.geometry.is_empty   #    Geometry isn't empty
-            & gdf.geometry.is_valid    #    Geometry is topologically valid
-        )
-
-        # Count invalid records 
-        invalid_count = (~valid).sum()
-
-        logger.info("Total geometries: %s", len(gdf))
-        logger.info("Valid geometries: %s", valid.sum())
-
-        if invalid_count > 0:
-            logger.warning(
-                "Found %s missing, empty or invalid geometries",
-                invalid_count,
-            )
-
-        # Keep only valid geometries 
-        # Use copy cause we are creating a filtered GeoDataFrame. We intend to modify it further later. 
-        validated_gdf = gdf.loc[valid].copy()
-
-        return validated_gdf
-
-         
-
-    # move outside the BAG adapter
-    def _filter_geometry_types(
-        self,
-        gdf: gpd.GeoDataFrame,
-    ) -> gpd.GeoDataFrame:
-        """
-        Keep only Polygon and MultiPolygon geometries.
-        """
-
-        allowed_types = ["Polygon", "MultiPolygon"]
-
-        # Identify allowed geometry types
-        mask = gdf.geometry.geom_type.isin(allowed_types)
-
-        # Count removed records
-        removed_count = (~mask).sum()
-
-        logger.info("Geometry types before filtering:\n%s",
-                    gdf.geometry.geom_type.value_counts())
-
-        if removed_count > 0:
-            logger.info("Removing %s unsupported geometry types", removed_count)
-
-        # Filter GeoDataFrame
-        filtered_gdf = gdf.loc[mask].copy()
-
-        logger.info("Records remaining after filtering: %s", len(filtered_gdf))
-
-        return filtered_gdf
 
 
     # If I move this, remember it turns a list[dict] into GeoDataFrame
@@ -237,14 +176,14 @@ class BAGBuildingAdapter(BaseBuildingAdapter):
                 crs="EPSG:4326",
             )
 
-        # 4. Convert to GeoDataFrame 
+        # 4. Convert to GeoDataFrame. Make sure the CRS is "EPSG:4326"
         gdf = self._to_gdf(features, crs= "EPSG:4326")
 
         # 5. Validate Geometries 
-        gdf = self._validate_geometries(gdf)
+        gdf = _validate_geometries(gdf)           # returns a copy() version
 
         # 6. Keep building footprint geometry types 
-        gdf = self._filter_geometry_types(gdf)
+        gdf = _filter_geometry_types(gdf)         # returns a copy() version
 
 
         # 7. Prepare final result - Reset index after filtering

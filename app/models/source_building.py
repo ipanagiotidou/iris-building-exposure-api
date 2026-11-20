@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from geoalchemy2 import Geometry
 
-from app.core.db import Base
+from app.core.db.db import Base
 
 
 """ 

@@ -10,6 +10,7 @@ engine = create_engine(settings.database_url, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
+# Base Class 
 # declarative base class provided by SQLAlchemy.
 class Base(DeclarativeBase):
     pass

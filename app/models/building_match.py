@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, fu
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.core.db import Base
+from app.core.db.db import Base
 
 
 class BuildingMatch(Base):

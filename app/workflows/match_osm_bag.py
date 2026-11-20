@@ -8,8 +8,8 @@ from geoalchemy2.shape import from_shape
 import osmnx as ox
 from shapely.geometry import Polygon, box
 
-from app.core import db
-from app.core.db import SessionLocal
+from app.core.db import db
+from app.core.db.db import SessionLocal
 
 from app.services.match import match_osm_bag_buildings_with_postgis
 
