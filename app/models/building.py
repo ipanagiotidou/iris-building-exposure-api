@@ -28,8 +28,7 @@ EXPLAIN Mapped + mapped_column:
 
 # Define the Data Model. 
 # To do so, make a Python class that inherits from Base, which is the declarative base class provided by SQLAlchemy.
-# The canonical building table should be STRICT, not permissive.
-# We want to enforce a consistent, clean, canonical schema.
+# The canonical building table should be STRICT. We want to enforce a consistent, clean, canonical schema.
 # Each attribute of the class represents a column in the relevant database table.
 # registered with SQLAlchemy's Base.metadata when the module is imported.
 class Building(Base):

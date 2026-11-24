@@ -76,45 +76,59 @@ class OSMBuildingAdapter(BaseBuildingAdapter):
         """
 
         # --------------------------------------------------
-        # REQUEST FEATURES FROM OSM API.
+        # 1. REQUEST FEATURES FROM OSM API.
         # --------------------------------------------------
             
         if tags is None: 
             tags = {"building": True}
 
-        # 1. turn the given bbox into a polygon to feed the OSM API
+        # Turn the given bbox into a polygon to feed the OSM API
         bbox_tuple = bbox.as_ogc_bbox_tuple
         bbox_polygon = box(*bbox_tuple)
         
-        # 2. Request OSM features with tags = {'building': True}. Returns a gdf. 
-        gdf = ox.features.features_from_polygon(bbox_polygon, tags=tags)   # gdf comes with MultiIndex (element, id) 
+        # Request OSM features with tags = {'building': True}. Returns a gdf. 
+        original_gdf = ox.features.features_from_polygon(
+            bbox_polygon, 
+            tags=tags,
+        )   
 
-        # 3. Ensure the CRS is "EPSG:4326"
-        gdf = gdf.to_crs(4326)
+        # Usefull if I want to preserve the original OSM data.
+        gdf = original_gdf.copy()
 
-        # 4. Flatten the Multi-Index & preserve element and id as ordinary columns (element, id). 
+        # --------------------------------------------------
+        # 2. STANDARDIZE DATA
+        # --------------------------------------------------
+
+        # Ensure the CRS is "EPSG:4326"
+        gdf = gdf.to_crs("EPSG:4326")
+
+        # Flatten the Multi-Index & preserve element and id as ordinary columns (element, id). 
         gdf = gdf.reset_index()       # It flattens the Multi-Index WITHOUT dropping the old.
 
 
         # --------------------------------------------------
-        # GEOMETRY PROCESSING
+        # 3. GEOMETRY PROCESSING
         # --------------------------------------------------
 
-        # IMPORTANT: Execution order matters. Filter geometry types BEFORE validation because make_valid() can change geometry types.
-        # 1. Filter supported geometry types.
-        # 2. Repair and remove invalid geometries.
-        # 
-        gdf = _filter_geometry_types(gdf)     
+        # IMPORTANT: Execution order matters. make_valid() function can change geometry types into Geometry Collection (Polygon + Line).
+        # 1. Repair and remove invalid geometries.
+        # 2. Filter supported geometry types.
+
         gdf = _validate_geometries(gdf)       
+        gdf = _filter_geometry_types(gdf)     
 
         # --------------------------------------------------
-        # FINAL PREPARATION
+        # 4. FINAL PREPARATION
         # --------------------------------------------------
 
-        # 7. Prepare final result - Reset index after filtering 
+        # Reset index after filtering 
         # NOTE: Keep the reset_index(drop=True) in this function here. Resetting the index isn't really geometry filtering or geometry validation. It's a final preparation step.
         gdf = gdf.reset_index(drop=True)       # back to the default 0, 1, 2 & drop the old indices 
- 
+
+        # --------------------------------------------------
+        # 5. LOGGING
+        # --------------------------------------------------
+
         logger.info(
             "OSM retrieval completed: %s buildings returned",
             len(gdf),
