@@ -7,61 +7,40 @@ import geopandas as gpd
 # move outside the BAG adapter
 def _validate_geometries(gdf: gpd.GeoDataFrame) ->  gpd.GeoDataFrame:
     """
-    Remove missing, empty and invalid geometries.
+    Repair geometries and remove missing, empty and invalid geometries.
     """
 
-    # Check geometry conditions - All 3 must be true 
+    # Create an independent copy that I intend to modify later.  Original gdf remains unchanged.
+    copied_gdf = gdf.copy()
+
+    valid_top_before = copied_gdf.geometry.is_valid    # Geometry is TOPOLOGICALLY valid. Return a SERIES of dtype('bool') with value True for geometries that are valid.
+    logger.info("Total geometries: %s", len(copied_gdf))
+    logger.info("Valid geometries before repair: %s", valid_top_before.sum())
+
+    # Repair Geometries 
+    # NOTE: Can return MultiPolygon or GeometryCollection (Polygon, Linestring, ...).
+    # NOTE: I filter by geometry types. The filter should come before this step.
+    copied_gdf.geometry = copied_gdf.geometry.make_valid()
+
+    valid_top_after = copied_gdf.geometry.is_valid  
+    logger.info("Valid geometries after  repair: %s", valid_top_after.sum())
+
+    # Check geometry conditions - All 3 must be true to be valid.
+    # The functions return True/False.
     valid = (
-        gdf.geometry.notna()       # 	Geometry actually exists
-        & ~gdf.geometry.is_empty   #    Geometry isn't empty
-        & gdf.geometry.is_valid    #    Geometry is topologically valid
+        copied_gdf.geometry.notna()       #    Geometry actually exists (not-missing).
+        & ~copied_gdf.geometry.is_empty   #    Geometry isn't empty  E.g. There can be a Polygon that is Empty... coming from the intersection of two polygons that do not overlap. No need to keep it. 
+        & copied_gdf.geometry.is_valid    #    Geometry is topologically valid
     )
 
-    # Count invalid records 
+    # Count invalid records - sums all False records.
     invalid_count = (~valid).sum()
 
-    logger.info("Total geometries: %s", len(gdf))
-    logger.info("Valid geometries: %s", valid.sum())
+    if invalid_count > 0: logger.warning("Found %s missing, empty or invalid geometries", invalid_count)
 
-    if invalid_count > 0:
-        logger.warning(
-            "Found %s missing, empty or invalid geometries",
-            invalid_count,
-        )
-
-    # Keep only valid geometries 
-    # Use copy cause we are creating a filtered GeoDataFrame. We intend to modify it further later. 
-    validated_gdf = gdf.loc[valid].copy()
+    # Filter out Invalid geometries and Keep only the Valid ones.
+    validated_gdf = copied_gdf.loc[valid].copy()
 
     return validated_gdf
 
         
-
-# move outside the BAG adapter
-def _filter_geometry_types(
-    gdf: gpd.GeoDataFrame,
-) -> gpd.GeoDataFrame:
-    """
-    Keep only Polygon and MultiPolygon geometries.
-    """
-
-    allowed_types = ["Polygon", "MultiPolygon"]
-
-    # Identify allowed geometry types
-    mask = gdf.geometry.geom_type.isin(allowed_types)
-
-    # Count removed records
-    removed_count = (~mask).sum()
-
-    logger.info("Geometry types before filtering:\n%s",
-                gdf.geometry.geom_type.value_counts())
-
-    if removed_count > 0:
-        logger.info("Removing %s unsupported geometry types", removed_count)
-
-    # Filter GeoDataFrame
-    filtered_gdf = gdf.loc[mask].copy()
-
-    logger.info("Records remaining after filtering: %s", len(filtered_gdf))
-
-    return filtered_gdf

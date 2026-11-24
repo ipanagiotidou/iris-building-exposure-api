@@ -10,7 +10,8 @@ from app.core.config import settings
 from app.schemas.bounding_box import BoundingBox
 from app.sources.base import BaseBuildingAdapter
 
-from app.modules.geometry.validation import _validate_geometries, _filter_geometry_types
+from app.modules.geometry.validation import _validate_geometries
+from app.modules.geometry.filtering import _filter_geometry_types
 
 
 # LOGGING 

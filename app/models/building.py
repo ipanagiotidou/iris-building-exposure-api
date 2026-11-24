@@ -83,7 +83,7 @@ class Building(Base):
     tags_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
 
-    # RELATIONSHIPS 
+    # RELATIONSHIPS - it's not a DB column. A Convenient Python Navigation.
     # The relationship doesn't create an additional database column. The actual database link is established by building_id and its ForeignKey.
     # relationship attribute that ALLOWS you to ACCESS the RELATED BuildingSourceRecord objects associated with a Building object.
     # The relationship() definitions add the convenient Python-level navigation. 
