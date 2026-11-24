@@ -1,3 +1,5 @@
+# The normalization functions will convert both GeoDataFrames into this common structure.
+
 
 import math
 from math import floor

@@ -22,7 +22,7 @@ from geoalchemy2.shape import from_shape
 from app.core.db.db import Base
 
 from app.models.building import Building
-from app.models.source_building import OSMBuildingRaw, BAGBuildingRaw
+from app.models.OLD_source_building import OSMBuildingRaw, BAGBuildingRaw
 
 from app.services.normalize import clean_value, parse_float_maybe, normalize_height_m, normalize_num_storeys, normalize_year_built, normalize_building_type
 

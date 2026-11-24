@@ -105,6 +105,7 @@ class Building(Base):
 # registered with SQLAlchemy's Base.metadata when the module is imported.
 # Relationship 1 Canonical Record -> Many Source Records 
 
+# we can connect the source records to your canonical building table through the matching workflow
 class BuildingSourceRecord(Base):
     __tablename__ = "building_source_records"
 
