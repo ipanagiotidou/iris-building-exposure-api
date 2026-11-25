@@ -34,6 +34,7 @@ from app.models.source_building import BuildingSourceRecord
 # IMPROVEMET: EACH BATCH SHOULD NOT CONTAIN DUBLICATES. CAUSE THE UPDATE DOESNT CHECK... 
 # One important constraint: make sure each batch contains unique (source_dataset, source_record_id) pairs.
 # PostgreSQL cannot update the same conflicting row twice in one INSERT ... ON CONFLICT DO UPDATE statement.
+# The CRUD function should receive unique source identifiers.
 
 def upsert_source_buildings(
         db: Session,

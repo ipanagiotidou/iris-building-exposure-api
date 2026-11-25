@@ -4,6 +4,7 @@
 # The shared preparation service should work without importing anything from those source adapters.
 
 
+
 from datetime import date, datetime
 
 import geopandas as gpd
@@ -13,11 +14,8 @@ from geoalchemy2.shape import from_shape
 from shapely.geometry import Polygon, MultiPolygon
 
 
-
 def _make_json_serializable(value):
-    """
-    Convert pandas and NumPy values into JSON-compatible values.
-    """
+    """Convert pandas and NumPy values into JSON-compatible values."""
 
     if isinstance(value, dict):
         return {
@@ -28,17 +26,16 @@ def _make_json_serializable(value):
     if isinstance(value, (list, tuple)):
         return [_make_json_serializable(item) for item in value]
 
-    if hasattr(value, "item") and callable(value.item):
-        value = value.item()
-
     if value is None or value is pd.NA or value is pd.NaT:
         return None
+
+    if hasattr(value, "item") and callable(value.item):
+        value = value.item()
 
     if isinstance(value, (datetime, date)):
         return value.isoformat()
 
-    missing = pd.isna(value)
-    if isinstance(missing, bool) and missing:
+    if pd.isna(value):
         return None
 
     return value
@@ -49,40 +46,64 @@ def prepare_source_records(
     source_dataset: str,
     source_id_column: str,
 ) -> list[dict]:
+    """
+    Convert a normalized GeoDataFrame into database-ready records.
+
+    Expected input:
+    - Unique source identifiers.
+    - Polygon or MultiPolygon geometries.
+    - A defined CRS.
+    """
 
     if gdf.empty:
         return []
 
+    if source_id_column not in gdf.columns:
+        raise ValueError(
+            f"Source ID column '{source_id_column}' not found."
+        )
+
+    if gdf[source_id_column].isna().any():
+        raise ValueError(
+            f"Missing source identifiers in '{source_id_column}'."
+        )
+
+    if gdf[source_id_column].duplicated().any():
+        raise ValueError(
+            f"Duplicate source identifiers in '{source_id_column}'."
+        )
+
     if gdf.crs is None:
         raise ValueError("GeoDataFrame CRS is missing.")
 
-    gdf = gdf.to_crs(epsg=4326)
+    if not source_dataset:
+        raise ValueError("Source dataset cannot be empty.")
 
-    geometry_column = gdf.geometry.name
+    # Transform coordinates to the database CRS.
+    prepared_gdf = gdf.to_crs(epsg=4326)
 
-    # The Goal is to prepare the records as the CRUD expects them.  list[dict]
+    geometry_column = prepared_gdf.geometry.name
+
     records = []
 
-    # each row 
-    for _, row in gdf.iterrows():
+    for _, row in prepared_gdf.iterrows():
 
         geometry = row[geometry_column]
 
         if geometry is None or geometry.is_empty:
             continue
 
-        # First, turn Polygons into MultiPolygons cause this is what PostGIS expects. 
         if isinstance(geometry, Polygon):
             geometry = MultiPolygon([geometry])
 
-        # Now, everything should be MultiPolygon.
         if not isinstance(geometry, MultiPolygon):
             raise ValueError(
                 f"Unsupported geometry type: {geometry.geom_type}"
             )
 
-        # all attributes except geometry 
-        attributes = row.drop(labels=[geometry_column]).to_dict()
+        attributes = row.drop(
+            labels=[geometry_column]
+        ).to_dict()
 
         attributes = _make_json_serializable(attributes)
 
