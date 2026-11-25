@@ -25,25 +25,27 @@ class BuildingSourceRecord(Base):
         ),
     )
 
-
+    # Internal database ID
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
 
     # FOREIGN KEY TO CANONICAL TABLE 
+    # Optional link to canonical building
     # Link to canonical building - This attribute is a foreign key that refers to the primary key of the canonical building table.
-    building_id: Mapped[int] = mapped_column(
+    # It can be Nullable. So that we can commit the source buildings before relating them to the canonical schema.
+    building_id: Mapped[int | None] = mapped_column(
         ForeignKey("buildings.id"),   
         nullable=True,
         index=True
     )
 
     # Original source identity
-    source_dataset: Mapped[str] = mapped_column(String(50), nullable=False)
-    source_record_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_dataset: Mapped[str] = mapped_column(String(50), nullable=False)    # OSM, BAG, etc.
+    source_record_id: Mapped[str] = mapped_column(String(255), nullable=False) # Original source identifier
 
-    # Original source attributes
+    # Original source attributes as JSONB
     source_attributes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
-    # Original source geometry
+    # Original source geometry in PostGIS 
     source_geom: Mapped[object | None] = mapped_column(
         Geometry("MULTIPOLYGON", srid=4326),
         nullable=True

@@ -5,6 +5,7 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import settings # access the settings object from the config module to get the database URL and other configuration values.
 
+
 # This module creates the database ENGINE and a SESSION factory.
 engine = create_engine(settings.database_url, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -20,9 +21,10 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
-    except Exception: # This helps when something fails mid-transaction.
-        db.rollback()
+    except Exception:   # This helps when something fails mid-transaction.
+        db.rollback()   # CANCELS uncommitted changes.
         raise
     finally:
-        db.close()
+        db.close()      # FREES the session RESOURCES.
+
 
