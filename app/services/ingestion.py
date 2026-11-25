@@ -1,6 +1,6 @@
 
 # INGESTION SERVICE RESPONSIBILITIES:
-# - The ingestion service prepares database-ready records.
+# - The ingestion service prepares database-ready records. It converts each row into a database-ready Python dictionary.
 
 # The INGESTION SERVICE IS: Responsible for data preparation & Responsible for transaction management
 # - Receives the GeoDataFrame.
