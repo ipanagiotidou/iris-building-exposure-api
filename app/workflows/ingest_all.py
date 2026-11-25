@@ -11,7 +11,7 @@ from app.core.db import db
 from app.core.db.db import SessionLocal
 
 from app.models.building import OSMCanonicalBuilding, BAGCanonicalBuilding
-from app.models.source_building import OSMBuildingRaw
+from app.models.OLD_source_building import OSMBuildingRaw
 
 from app.schemas.bbox import BBox
 
@@ -21,8 +21,8 @@ from app.services.bag_fetch import fetch_bag_buildings_gdf
 from app.services.normalize import prepare_raw_osm_buildings_gdf, normalize_osm_gdf_to_canonical
 from app.services.normalize import prepare_raw_bag_buildings_gdf, normalize_bag_gdf_to_canonical
 
-from app.services.ingest import ingest_raw_osm_buildings, ingest_raw_bag_buildings
-from app.services.ingest import ingest_canonical_buildings
+from app.services.ingest_OLD import ingest_raw_osm_buildings, ingest_raw_bag_buildings
+from app.services.ingest_OLD import ingest_canonical_buildings
 
 
 ### -----  OSM ------------------------------------------------------

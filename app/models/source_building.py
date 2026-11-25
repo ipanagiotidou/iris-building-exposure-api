@@ -46,6 +46,7 @@ class BuildingSourceRecord(Base):
     source_attributes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Original source geometry in PostGIS 
+    # The model declares geometry MULTIPOLYGON.
     source_geom: Mapped[object | None] = mapped_column(
         Geometry("MULTIPOLYGON", srid=4326),
         nullable=True

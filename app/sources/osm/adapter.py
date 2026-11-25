@@ -128,7 +128,7 @@ class OSMBuildingAdapter(BaseBuildingAdapter):
             len(gdf),
         )
 
-        logger.debug("GeoDataFrame preview - First row :\n%s", gdf.head(1))
+        logger.debug("GeoDataFrame preview - First row :\n%s", gdf.head(2))
 
         return gdf
 
