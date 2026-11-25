@@ -2,6 +2,8 @@
 import logging 
 import pandas as pd
 import geopandas as gpd
+from shapely.geometry import Polygon, MultiPolygon, GeometryCollection
+
 
 logger = logging.getLogger(__name__) # module's name 
 
@@ -163,10 +165,64 @@ def _remove_missing_and_empty_geometries(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFr
     return filtered_gdf
 
 
+def _combine_duplicate_osm_geometries(
+    gdf: gpd.GeoDataFrame,
+) -> gpd.GeoDataFrame:
+    """
+    Combine geometries belonging to duplicate (element, id) records
+    into a single MultiPolygon geometry.
+
+    PRECONDITION: I can assume not missing & not empty values.
+    """
+
+    if gdf.empty:
+        return gdf.copy()
+
+    grouped_records = []
+
+    # FOR EACH GROUP:  I should collect all Polygon geometries 
+    # group variable should be all other columns
+    for (element, record_id), group in gdf.groupby(["element", "id"], dropna=False):
+
+        # collect all polygons from each group
+        polygons = []
+
+        for geometry in group.geometry:
+
+            if isinstance(geometry, Polygon):
+                polygons.append(geometry)
+
+            elif isinstance(geometry, MultiPolygon):
+                polygons.extend(geometry.geoms)
+
+        # if polygons = empty [] then continue to the next group
+        if not polygons:
+            continue
+
+        combined_geometry = MultiPolygon(polygons)
+
+        # Keep the attributes from the first record.
+        record = group.iloc[0].drop(labels=gdf.geometry.name).to_dict()
+
+        record["element"] = element
+        record["id"] = record_id
+        record[gdf.geometry.name] = combined_geometry
+
+        grouped_records.append(record)
+
+
+    # create the geodataframe 
+    result = gpd.GeoDataFrame(
+        grouped_records,
+        geometry=gdf.geometry.name,
+        crs=gdf.crs,
+    )
+
+    return result
     
 
 
-# Responsibility: 
+# Responsibility: ORCHESTRATION FUNCTION
 # Orchestrates the previous functions and returns the cleaned GeoDataFrame.
 # The last function becomes your main entry point, which your source adapters can call.
 def _validate_geometries(gdf: gpd.GeoDataFrame) ->  gpd.GeoDataFrame:
@@ -196,8 +252,14 @@ def _validate_geometries(gdf: gpd.GeoDataFrame) ->  gpd.GeoDataFrame:
     # 5. Retain Polygon and Multi-Polygon
     polygon_like_gdf = _filter_geometry_types(exploded_gdf)
 
+    # EXTRA STEP: GeometryCollection is exploded into multiple polygon rows, we need to combine those polygon components back into one MultiPolygon before inserting.
+    # TO BE DONE. 
+    # [...]
+    # group records by (element, id) and combine their geometries into a single MultiPolygo
+    combined_geom_gdf = _combine_duplicate_osm_geometries(polygon_like_gdf)
+
     # 6. Inpect final geometries
-    _inspect_geometries(copied_gdf)
+    _inspect_geometries(combined_geom_gdf)
 
     logger.info("Geometry validation complete: %s/%s records retained.", len(polygon_like_gdf), len(gdf))
 

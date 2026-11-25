@@ -55,7 +55,7 @@ def upsert_source_buildings(
     Return value: returns the number of submitted records, not a count of newly inserted records.
 
     NOTES:
-    - the CRUD function expects source_geom to already be compatible with that column Geometry("MULTIPOLYGON", srid=4326)
+    - the CRUD function expects source_geom to already be compatible with that column Geometry("MULTIPOLYGON", srid=4326). Geometry prep happens in the service/ingestion module.
 
 
     """
