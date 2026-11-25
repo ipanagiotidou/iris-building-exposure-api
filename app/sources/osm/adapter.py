@@ -7,7 +7,6 @@ from shapely.geometry import box
 from app.sources.base import BaseBuildingAdapter
 from app.schemas.bounding_box import BoundingBox
 from app.modules.geometry.validation import _validate_geometries
-from app.modules.geometry.filtering import _filter_geometry_types
 
 logger = logging.getLogger(__name__) # module's name 
 
@@ -110,12 +109,7 @@ class OSMBuildingAdapter(BaseBuildingAdapter):
         # 3. GEOMETRY PROCESSING
         # --------------------------------------------------
 
-        # IMPORTANT: Execution order matters. make_valid() function can change geometry types into Geometry Collection (Polygon + Line).
-        # 1. Repair and remove invalid geometries.
-        # 2. Filter supported geometry types.
-
         gdf = _validate_geometries(gdf)       
-        gdf = _filter_geometry_types(gdf)     
 
         # --------------------------------------------------
         # 4. FINAL PREPARATION
@@ -134,7 +128,7 @@ class OSMBuildingAdapter(BaseBuildingAdapter):
             len(gdf),
         )
 
-        logger.debug("GeoDataFrame preview:\n%s", gdf.head())
+        logger.debug("GeoDataFrame preview - First row :\n%s", gdf.head(1))
 
         return gdf
 
