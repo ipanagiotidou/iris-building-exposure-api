@@ -1,65 +1,44 @@
+# This module It is the bridge between your source-specific normalization layer (Adapter+Normalization) and your PostgreSQL persistence layer.
+# It receives a normalized GeoDataFrame and the metadata identifying its source, performs the generic preparation required by your database model, 
+# and returns records in the exact structure expected by your SourceData model.
+# This module constructs the records . - Construct database-ready records
+# this service should not insert anything into PostgreSQL. It should return prepared records. 
+# A separate repository/persistence component should handle insertion, transactions, and database operations.
+# Record construction	Build a list of dictionaries matching the fields expected by your SourceData model.
 
-# SHARED PREP MODULE - IT IS GENERIC
+# SHARED PREP MODULE - IT IS GENERIC DATA PREP
 # # Perform operations common to all sources: CRS conversion, geometry serialization, JSON-compatible attributes, and database record construction.
 # The shared preparation service should work without importing anything from those source adapters.
-# The function is an application SERVICE because it prepares data for your persistence layer. It is not a CRUD function, and it is not a SOURCE ADAPTER.
+# The function is an application SERVICE because it PREPARES DATA FOR THE PERSISTENE LAYER. It is not a CRUD function, and it is not a SOURCE ADAPTER.
 # One final distinction: your source normalizers should own source-specific geometry aggregation, while this service should only perform generic preparation.
 
-from datetime import date, datetime
 
+import math 
 import geopandas as gpd
 import pandas as pd
+import numpy as np 
 
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Polygon, MultiPolygon
 
+from .serialization import _normalize_python_to_json_compatible
 
+# Python serialization layer that converts data from Python, pandas and NumPy into PostgreSQL JSONB
 # This func solves an important problem when moving data from GeoPandas into PostgreSQL.
 # Responsibility: converting PYTHON, PANDAS, and NUMPY values -->  into values that can be stored as JSON.
 # SEE HERE: https://app.notion.com/p/Python-40d347b22d3b801eaf0ffbc678268dac?source=copy_link#423347b22d3b800fbda5dad76d2e0b66
-def _make_json_serializable(value):
-    """Convert PANDAS and NUMPY values into JSON-compatible values.
-    
-    NOTE: a dictionary is also a value in python ! value is simply the name of the parameter. It can receive a string, integer, list, dictionary, or almost any Python object.
-    NOTE: Your _make_json_serializable() function does not itself save anything to the database or produce a JSON string. It prepares the Python dictionary so that SQLAlchemy can serialize it when persisting the record.
-    """
-
-    # dict 
-    # the function calls itself
-    if isinstance(value, dict):
-        return {
-            str(key): _make_json_serializable(val)
-            for key, val in value.items()
-        }
-
-    # tuple --> the tuple becomes into a list ! 
-    # the function calls itself
-    if isinstance(value, (list, tuple)):
-        return [_make_json_serializable(item) for item in value]
-
-    # pd.NA and pd.NaT --> None 
-    if value is None or value is pd.NA or value is pd.NaT:
-        return None
-
-    if hasattr(value, "item") and callable(value.item):
-        value = value.item()
-
-    # datetime 
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
-
-    if pd.isna(value):
-        return None
-
-    return value
 
 
+
+# ORCHESTRATE
 def prepare_source_records(
     gdf: gpd.GeoDataFrame,
     source_dataset: str,
     source_id_column: str,
 ) -> list[dict]:
     """
+    Generic preparation of records for the persistence layer, including CRS conversion and database geometry construction.
+
     Convert a normalized GeoDataFrame into database-ready records.
 
     Expected input:
@@ -110,7 +89,7 @@ def prepare_source_records(
                 f"Unsupported geometry type: {geometry.geom_type}"
             )
 
-        # Extract attributes from a GeoDataFrame row, turn into dict. 
+        # Extract attributes from a GeoDataFrame row, turn into DICTIONARY. 
         attributes = row.drop(labels=[geometry_column]).to_dict()
 
         # based on the SQLAlchemy Model defined in models/ ... the attributes should be JSONB type in PostgreSQL.
