@@ -3,6 +3,13 @@ from sqlalchemy.orm import Session
 
 from app.models.source_building import BuildingSourceRecord
 
+# Handles database operations, such as:
+# - Insert source records.
+# - Retrieve source records.
+# - Check whether a source record already exists.
+# - Update existing source records.
+# - Delete source records.
+
 # SQL operations
 # NOTE: Its responsibility is to INTERACT with your SOURCE building TABLES. 
 # NOTE: This module achieves Database persistence.

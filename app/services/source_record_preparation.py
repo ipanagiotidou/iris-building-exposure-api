@@ -35,7 +35,7 @@ from .serialization import _normalize_python_to_json_compatible
 def prepare_source_records(
     gdf: gpd.GeoDataFrame,
     source_dataset: str,
-    source_id_column: str,
+    source_id_column: str = "source_record_id",  # I can remove this argument if I introduce a "source_id_column" in the source-specific normalize.py
 ) -> list[dict]:
     """
 

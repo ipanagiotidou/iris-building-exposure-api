@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 import geopandas as gpd
 
-from sources.osm.normalize import _combine_duplicate_osm_geometries
+from app.sources.osm.normalize import _combine_duplicate_osm_geometries
 
 logger = logging.getLogger(__name__) # module's name 
 
