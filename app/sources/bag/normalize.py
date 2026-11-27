@@ -21,6 +21,53 @@
 
 
 
+import geopandas as gpd
+from shapely.geometry import Polygon, MultiPolygon
+
+
+def _normalize_bag_gdf(
+        gdf: gpd.GeoDataFrame, 
+) -> gpd.GeoDataFrame:
+
+    """
+    RESPONSIBILITY: create a consistent source identifier while preserving all the original OSM columns.
+    - Preserve all original columns.
+    - Create a consistent source record identifier.
+    - Keep the existing CRS and geometry.
+
+
+    receives:
+    - the gdf from fetching 
+    - with defined CRS
+    - with a geometry column
+
+    It should define:
+    - the source ID column (source-specific) *define the same column for all sources 
+    - do not remove any column (keep as it is) !
+
+    """
+    normalized_gdf = gdf.copy() 
+
+    # UNIQUE IDENTIFIER: 
+
+    # DO NOT REPLACE THE COLUMM, CREATE AN EXTRA ONE ! LEAVE ALL OTHER ATTRIBUTES UNCHANGED. 
+    normalized_gdf["source_record_id"] = normalized_gdf["identificatie"].astype(str)
+    
+    return normalized_gdf
+
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
 
 
 ### --------- 2. BAG.   ------------------------------------------------------------------------------

@@ -198,8 +198,10 @@ def _validate_geometries(gdf: gpd.GeoDataFrame) ->  gpd.GeoDataFrame:
     # EXTRA STEP: GeometryCollection is exploded into multiple polygon rows, we need to combine those polygon components back into one MultiPolygon before inserting.
     # TO BE DONE. 
     # [...]
-    # group records by (element, id) and combine their geometries into a single MultiPolygo
-    combined_geom_gdf = _combine_duplicate_osm_geometries(polygon_like_gdf)
+    # group records by (element, id) and combine their geometries into a single MultiPolygon
+    # combined_geom_gdf = _combine_duplicate_osm_geometries(polygon_like_gdf)
+    # TODO: THIS IS TO BE CHANGED: i had a function OSM-specific that has to be moved elsewhere.
+    combined_geom_gdf = polygon_like_gdf
 
     # 6. Inpect final geometries
     _inspect_geometries(combined_geom_gdf)

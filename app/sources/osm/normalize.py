@@ -51,7 +51,7 @@ def _normalize_osm_gdf(
 
     # UNIQUE IDENTIFIER: Their IDs are not necessarily unique across element types.
     # Combining the element type and ID gives you a source identifier that distinguishes these records.
-    
+
     normalized_gdf["source_record_id"] = (
         normalized_gdf["element"].astype(str) 
         + "/" 
@@ -60,39 +60,6 @@ def _normalize_osm_gdf(
 
 
     return normalized_gdf
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
