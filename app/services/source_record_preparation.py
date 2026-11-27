@@ -180,5 +180,5 @@ def prepare_source_records(
             }
         )
 
-    return records
+    return records # List[Dict]
 

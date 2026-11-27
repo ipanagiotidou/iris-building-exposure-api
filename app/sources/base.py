@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 
 # Definition of a Common Adapter Interface: We define here what every source adapter should provide. 
+# abstract base classes (ABC) that define common container behaviors
 class BaseBuildingAdapter(ABC):
 
     # declares a method that subclasses must implement.
